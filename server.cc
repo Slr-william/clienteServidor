@@ -6,7 +6,7 @@
 using namespace std;
 using namespace zmqpp;
 
-string fileIn (string name, string text){
+string readfile (string name, string text){
   ifstream infile;
   char * buffer;
   long size;
@@ -29,7 +29,7 @@ string fileIn (string name, string text){
    return buffer;
 }
 
-void fileOut (string name, string text){
+void writefile (string name, string text){
   ofstream outfile;
   // Open the file
   outfile.open(name);
@@ -50,10 +50,10 @@ string messageHandler(message &m){
   m >> text;
 
   if (op == "read") {
-    return fileIn(nameFile,text);
+    return readfile(nameFile,text);
   }
   else{
-    fileOut(nameFile, text);
+    writefile(nameFile, text);
     return "You have written";
   }
 }
@@ -75,9 +75,8 @@ int main() {
     cout << "Waiting for message to arrive!\n";
     s.receive(m);
 
-    text = messageHandler(m);
+    m = messageHandler(m);
     cout << text << '\n';
-    m = "the file has been created";
     s.send(m);
   }
   cout << "Finished\n";
