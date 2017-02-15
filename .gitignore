@@ -1,3 +1,11 @@
 client
 server
 *.txt
+*.png
+*.jpg
+*.gif
+*.mp3
+*.jpeg
+*.mkv
+*.mp4
+*.avi
