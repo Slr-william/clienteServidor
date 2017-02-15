@@ -6,19 +6,25 @@
 using namespace std;
 using namespace zmqpp;
 
-void readfile (string name, string text){
-  ifstream infile(name,std::ifstream::binary|ios::ate);
+void readfile (string name, socket &s){
+  message m;
   char * buffer;
   long size;
 
+  ifstream infile(name,ios::binary|ios::ate);
   // get size of file
   size = infile.tellg();
-  infile.seekg(0);
+  infile.seekg(0, infile.beg);
   // allocate memory for file content
   buffer = new char [size];
   // read content of infile
   infile.read (buffer,size);
   infile.close();
+
+  m.push_back(buffer, size);
+  s.send(m);
+
+  delete[] buffer;
 }
 
 void writefile (string name, char * text, size_t size){
@@ -29,29 +35,31 @@ void writefile (string name, char * text, size_t size){
 }
 
 string messageHandler(message &m, socket *s){
-  message response;
+
+  size_t size;
   string op;
   string nameFile;
-  size_t size;
   char * buffer;
 
   m >> op;
   m >> nameFile;
-  m >> size;
 
-  buffer = new char[size];
-  buffer = (char * )m.raw_data(3);
-
-  //response = "Ingresa el buffer";
-  //s->send(response);
+  cout << "Operation :" <<op<< '\n';
 
   if (op == "read") {
-    readfile(nameFile,buffer);
-    return "leido";
+    readfile(nameFile, *s);
+    return "You have read";
   }
-  else{
+  else if(op == "write"){
+    m >> size;
+
+    buffer = new char[size];
+    buffer = (char * )m.raw_data(3);
     writefile(nameFile,buffer, size);
     return "You have written";
+  }
+  else{
+    return "You have not chosen";
   }
 }
 
@@ -60,17 +68,16 @@ int main() {
 
   context ctx;
   socket s(ctx, socket_type::rep);
-
-
   cout << "Binding socket to tcp port 5555\n";
 
   s.bind("tcp://*:5555");
   while (true) {
     message m;
     cout << "Waiting for message to arrive!\n";
-    s.receive(m);
+    if(s.receive(m)){
     m = messageHandler(m, &s);
     s.send(m);
+    }
   }
   cout << "Finished\n";
   return 0;
