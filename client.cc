@@ -1,33 +1,34 @@
 #include <iostream>
 #include <string>
 #include <zmqpp/zmqpp.hpp>
+#include <fstream>
 
 using namespace std;
 using namespace zmqpp;
 
-void uploadfile(string name){
-    ifstream infile;
+message uploadfile(string name, socket *s){
+    ifstream infile(name,ios::binary|ios::ate);
+
+    message m;
     char * buffer;
     long size;
-
-    // Open the file
-    infile.open(name);
-
     // get size of file
-    infile.seekg(0,infile.end);
     size = infile.tellg();
-    infile.seekg(0);
-
     // allocate memory for file content
     buffer = new char [size];
 
+    infile.seekg(0, infile.beg);
     // read content of infile
     infile.read (buffer,size);
 
+    m <<"write"<< name<<size;
+    m.push_back(buffer,size);
+    cout << s->send(m)<< " primero"<<endl;
+
     infile.close();
-    return buffer;
+    delete[] buffer;
+    return m;
   }
-}
 
 int main() {
   cout << "This is the client\n";
@@ -35,15 +36,14 @@ int main() {
   context ctx;
   socket s(ctx, socket_type::req);
 
+  message m;
+  message answer;
+
   cout << "Connecting to tcp port 5555\n";
   s.connect("tcp://localhost:5555");
 
-  cout << "Sending a hello message!\n";
-  message m;
-  m << "read" <<"example2.txt"<<" ";
-  s.send(m);
+  uploadfile("datos.jpg", &s);
 
-  message answer;
   s.receive(answer);
   string result;
   answer >> result;

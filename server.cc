@@ -6,54 +6,51 @@
 using namespace std;
 using namespace zmqpp;
 
-string readfile (string name, string text){
-  ifstream infile;
+void readfile (string name, string text){
+  ifstream infile(name,std::ifstream::binary|ios::ate);
   char * buffer;
   long size;
 
-  // Open the file
-  infile.open(name);
-
   // get size of file
-   infile.seekg(0,infile.end);
-   size = infile.tellg();
-   infile.seekg(0);
-
-   // allocate memory for file content
-   buffer = new char [size];
-
-   // read content of infile
-   infile.read (buffer,size);
-
-   infile.close();
-   return buffer;
+  size = infile.tellg();
+  infile.seekg(0);
+  // allocate memory for file content
+  buffer = new char [size];
+  // read content of infile
+  infile.read (buffer,size);
+  infile.close();
 }
 
-void writefile (string name, string text){
-  ofstream outfile;
-  // Open the file
-  outfile.open(name);
+void writefile (string name, char * text, size_t size){
+  ofstream outfile (name ,ios::binary);
   // write to outfile
-  outfile << text;
-  // release dynamically-allocated memory
+  outfile.write(text, size );
   outfile.close();
 }
 
-string messageHandler(message &m){
+string messageHandler(message &m, socket *s){
   message response;
   string op;
   string nameFile;
-  string text;
+  size_t size;
+  char * buffer;
 
   m >> op;
   m >> nameFile;
-  m >> text;
+  m >> size;
+
+  buffer = new char[size];
+  buffer = (char * )m.raw_data(3);
+
+  //response = "Ingresa el buffer";
+  //s->send(response);
 
   if (op == "read") {
-    return readfile(nameFile,text);
+    readfile(nameFile,buffer);
+    return "leido";
   }
   else{
-    writefile(nameFile, text);
+    writefile(nameFile,buffer, size);
     return "You have written";
   }
 }
@@ -63,7 +60,6 @@ int main() {
 
   context ctx;
   socket s(ctx, socket_type::rep);
-  string text;
 
 
   cout << "Binding socket to tcp port 5555\n";
@@ -71,12 +67,9 @@ int main() {
   s.bind("tcp://*:5555");
   while (true) {
     message m;
-
     cout << "Waiting for message to arrive!\n";
     s.receive(m);
-
-    m = messageHandler(m);
-    cout << text << '\n';
+    m = messageHandler(m, &s);
     s.send(m);
   }
   cout << "Finished\n";
