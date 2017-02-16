@@ -39,7 +39,6 @@ string messageHandler(message &m, socket *s){
   size_t size;
   string op;
   string nameFile;
-  char * buffer;
 
   m >> op;
   m >> nameFile;
@@ -52,10 +51,7 @@ string messageHandler(message &m, socket *s){
   }
   else if(op == "write"){
     m >> size;
-
-    buffer = new char[size];
-    buffer = (char * )m.raw_data(3);
-    writefile(nameFile,buffer, size);
+    writefile(nameFile,(char * )m.raw_data(3), size);
     return "You have written";
   }
   else{
@@ -73,10 +69,11 @@ int main() {
   s.bind("tcp://*:5555");
   while (true) {
     message m;
+
     cout << "Waiting for message to arrive!\n";
+
     if(s.receive(m)){
-    m = messageHandler(m, &s);
-    s.send(m);
+      messageHandler(m, &s);
     }
   }
   cout << "Finished\n";

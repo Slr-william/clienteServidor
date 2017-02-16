@@ -33,22 +33,18 @@ void downloadfile(const string& name, socket *s){
     long size;
     message m;
     message data;
-    char * buffer;
 
     m <<"read"<< name;
     s->send(m);
 
     if(s->receive(data)){
       size = data.size(0);
-      buffer = new char[size];
-      buffer = (char*)data.raw_data(0);
       std::cout << "The message arrive and his size is : " << size <<" parts: " << data.parts()<< '\n';
 
       ofstream outfile(name,ios::binary);
-      outfile.write(buffer,size);
+      outfile.write((char*)data.raw_data(0),size);
       outfile.close();
     }
-    delete[] buffer;
   }
 
 int main() {
@@ -60,16 +56,16 @@ int main() {
   message m;
   message answer;
   string result;
+  string user;
 
   cout << "Connecting to tcp port 5555\n";
   s.connect("tcp://localhost:5555");
 
-  //uploadfile("datos.jpg", &s);
-  downloadfile("parallelvsSequential.png", &s);
 
-  // s.receive(answer);
-  // answer >> result;
-  // cout << "Answer from server: \"" << result << "\"" << endl;
+
+
+  uploadfile("datos.jpg", &s);
+  downloadfile("parallelvsSequential.png", &s);
 
   cout << "Finished\n";
   return 0;
