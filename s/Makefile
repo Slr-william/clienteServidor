@@ -1,4 +1,4 @@
-CC	= g++ -std=c++11 -Wall -L/home/wilinux/zmq/lib -I/home/wilinux/zmq/include
+CC	= g++ -std=c++11 -Wall -L/home/wilinux/zmq/lib -I/home/wilinux/zmq/include -g
 LDFLAGS = -lpthread -lzmqpp -lzmq
 
 all: server
