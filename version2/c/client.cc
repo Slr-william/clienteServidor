@@ -60,17 +60,23 @@ void downloadfile(const string& name, socket *s,const string &user){
     long size;
     message m;
     message data;
+    long part = 0;
+    string finished;
+    ofstream outfile(name,ios::binary | ios::trunc);
+    outfile.close();
+    while (true) {
+      m <<"read"<< name <<user<<part;
+      s->send(m);
 
-    m <<"read"<< name <<user;
-    s->send(m);
-
-    if(s->receive(data)){
-      size = data.size(0);
-      cout << "The message arrive and his size is : " << size <<" parts: " << data.parts()<< '\n';
-
-      ofstream outfile(name,ios::binary);
-      outfile.write((char*)data.raw_data(0),size);
-      outfile.close();
+      if(s->receive(data)){
+        data >> finished;
+        size = data.size(1);
+        ofstream outfile(name,ios::binary | ios::app);
+        outfile.write((char*)data.raw_data(1),size);
+        outfile.close();
+        if (finished == "end") {break;}
+      }
+      part++;
     }
   }
 

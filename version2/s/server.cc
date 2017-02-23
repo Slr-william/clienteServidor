@@ -6,6 +6,8 @@
 #include <dirent.h>
 #include <vector>
 
+#define CHUNK_SIZE 1000
+
 using namespace std;
 using namespace zmqpp;
 
@@ -27,23 +29,38 @@ bool existsdir( const char* pzPath )
     return bExists;
 }
 
-void readfile (const string &name, socket &s, const string &user){
+void readfile (const string &name, socket &s, const string &user, long part){
   message m;
   char * buffer;
   long size;
+  long chunk = CHUNK_SIZE;
+
   string path = "./users/"+user+"/"+name;
   cout<<"path : " << path << '\n';
   ifstream infile(path.c_str(),ios::binary|ios::ate);
   // get size of file
   size = infile.tellg();
-  infile.seekg(0, infile.beg);
+
+  infile.seekg(chunk * part, infile.beg);
   // allocate memory for file content
-  buffer = new char [size];
+  if (CHUNK_SIZE*part > size && CHUNK_SIZE < size) {
+    m << "end";
+    chunk = size - (part-1)*chunk;
+  }
+  else if(CHUNK_SIZE >= size){
+    m << "end";
+    chunk = size;
+  }
+  else{
+    m << "continue";
+  }
+
+  buffer = new char [chunk];
   // read content of infile
-  infile.read (buffer,size);
+  infile.read (buffer,chunk);
   infile.close();
 
-  m.push_back(buffer, size);
+  m.push_back(buffer, chunk);
   s.send(m);
 
   delete[] buffer;
@@ -96,6 +113,7 @@ string messageHandler(message &m, socket *s){
   string nameFile;
   string user;
   string option;
+  long part;
 
   m >> op;
   m >> nameFile;
@@ -109,9 +127,10 @@ string messageHandler(message &m, socket *s){
     return "You are logged";
   }
   else if(op == "read") {
-    m>>user;
+    m >> user;
+    m >> part;
     std::cout << "The name of the user : " <<user << '\n';
-    readfile(nameFile, *s, user);
+    readfile(nameFile, *s, user, part);
     return "You have read";
   }
   else if(op == "write"){
