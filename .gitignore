@@ -1,5 +1,6 @@
 client
 server
+users
 *.txt
 *.png
 *.jpg
@@ -9,3 +10,6 @@ server
 *.mkv
 *.mp4
 *.avi
+*.deb
+*.rar
+*.zip
