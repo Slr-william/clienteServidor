@@ -29,10 +29,17 @@ public:
     return (char *)hash;
   }
 
-  //bool operator<(const charge &a, const charge &b){
-  //  return a.getPriority() < b.getPriority();
-  //}
+  string getFilename(){
+    return namefile;
+  }
   //virtual ~charge ();
+};
+
+class Compare{
+  public:
+    bool operator() ( charge *l,  charge *r) {
+        return l->getPriority() > r->getPriority();
+    }
 };
 
 void doHash(string string, char * mdString) {
@@ -50,13 +57,25 @@ void doHash(string string, char * mdString) {
 }
 
 int main(int argc, char const *argv[]) {
-  priority_queue(charge)
+  priority_queue<charge*,vector<charge*>, Compare> pq;
   char hash[SHA_DIGEST_LENGTH*2+1] = {0};
   doHash("Hola hola", hash);
-  printf( "Hash before : %s \n", hash);
-  charge s(9000, 23, "127.0.0.1", "pepe.jpg",hash );
+  charge a(90, 23, "127.0.0.1", "pepe1.jpg",hash );
+  doHash("hello heloo", hash);
+  charge b(905, 23, "127.0.0.2", "pepe2.jpg",hash );
+  doHash("Bonyour 32", hash);
+  charge c(450, 23, "127.0.0.3", "pepe3.jpg",hash );
+  pq.push(&a);
+  pq.push(&b);
+  pq.push(&c);
 
-  cout << "Priority : " << s.getPriority()<<'\n';
-  printf( "Hash : %s \n", s.getHash());
+  while ( !pq.empty() ){
+      cout << pq.top()->getFilename() << endl;
+      cout << pq.top()->getPriority() << endl;
+      pq.pop();
+  }
+
+
+
   return 0;
 }
