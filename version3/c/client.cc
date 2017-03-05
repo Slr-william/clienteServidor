@@ -84,7 +84,7 @@ int main() {
   cout << "This is the client\n";
 
   context ctx;
-  socket s(ctx, socket_type::req);
+  socket socket_broker(ctx, socket_type::req);
 
   message m;
   message * answer = new message();
@@ -93,14 +93,14 @@ int main() {
   int n = 0;
 
   cout << "Connecting to tcp port 5555\n";
-  s.connect("tcp://localhost:5555");
+  socket_broker.connect("tcp://localhost:5555");
 
   cout << "User: " << '\n';
   cin >> user;
   m <<"login"<< user;
-  s.send(m);
+  socket_broker.send(m);
 
-  s.receive(*answer);
+  socket_broker.receive(*answer);
 
   cout << "rECIBI mensaje con partes de : " << answer->parts()<< '\n';
   string aux;
@@ -125,12 +125,12 @@ int main() {
     case 1:
       cout << "Enter the file's name: " << '\n';
       cin >> nameFile;
-      downloadfile(nameFile,&s,user);
+      downloadfile(nameFile,&socket_broker,user);
       break;
     case 2:
       cout << "Enter the file's name: " << '\n';
       cin >> nameFile;
-      uploadfile(nameFile, &s, user);
+      uploadfile(nameFile, &socket_broker, user);
   }
 
   cout << "Finished\n";
