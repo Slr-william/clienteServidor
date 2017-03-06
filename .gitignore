@@ -2,6 +2,7 @@ client
 server
 users
 out
+*.o
 *.txt
 *.png
 *.jpg
