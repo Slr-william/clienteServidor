@@ -13,7 +13,7 @@ int main(int argc, char const *argv[]) {
   string sha1;
   string namefile;
   int size;
-
+  /*
   ofstream outFile;
   outFile.open("file.txt", ios::app);
   user = "pepino";
@@ -33,9 +33,9 @@ int main(int argc, char const *argv[]) {
   outFile << namefile;
   outFile << "\n";
 
-  outFile.close();
+  outFile.close();*/
 
-  inFile.open("file.txt");
+  /*inFile.open("file.txt");
   while (true) {
     inFile >> user >> password >> istherefile;
     while (istherefile == "file") {
@@ -43,6 +43,19 @@ int main(int argc, char const *argv[]) {
     }
     if(inFile.eof()){break;}
     cout << "user: " << user <<" ,pass: "<< password <<" ,size: " <<size<<",sha1: " <<sha1 <<" ,namefile: "<<namefile <<'\n';
+  }
+  inFile.close();*/
+  int istherefile;
+  int strpos;
+  string input;
+  string line;
+
+  inFile.open("file.txt");
+  while (!inFile.eof()) {
+    getline( inFile, line );
+    strpos = line.find(" ");
+    input = line.substr(0, strpos);
+    cout << input << endl;
   }
   inFile.close();
   return 0;

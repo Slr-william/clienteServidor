@@ -77,14 +77,46 @@ class allUsers {
         cout << " <" << it->first.first <<" "<<it->first.second<<" >"<<endl;
         vector<userFile> v = it->second;
         for (int i = 0; i < v.size(); i++) {
-          cout << i <<": "<<v[i].getName() << '\n';
+          cout <<"\t"<< i <<": "<<v[i].getName() << '\n';
         }
       }
-  }
+    }
+
+    bool exist(string user) {
+      int strpos;
+      string input;
+      string line;
+      ifstream inFile;
+
+      inFile.open("file.txt");
+      while (!inFile.eof()) {
+        getline( inFile, line );
+        strpos = line.find(" ");
+        input = line.substr(0, strpos);
+
+        if (input == user) {
+          std::cout << "El usuario ya existe" << '\n';
+          return true;
+        }
+      }
+      inFile.close();
+      return false;
+    }
+
+    void addUser(string user, string password) {
+      if (!exist(user)) {
+        ofstream outFile;
+        outFile.open("file.txt", ios::app);
+        outFile << user<<" "<<password<<" "<< 0 << "\n";;
+        outFile.close();
+        users.insert(make_pair(make_pair(user,password),vector<userFile>()));
+      }
+    }
 };
 
 int main(int argc, char const *argv[]) {
   allUsers *usuarios = new allUsers();
+  usuarios->addUser("Jose","ratafea123");
   usuarios->print();
 
   return 0;

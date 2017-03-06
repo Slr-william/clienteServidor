@@ -12,9 +12,9 @@ private:
   int bitrate = 0;
   string address = "x";
   string namefile = "x";
-  char * hash;
+  string hash;
 public:
-  charge (int sizefile, int bitrate, string address, string namefile, char * hash){
+  charge (int sizefile, int bitrate, string address, string namefile, string hash){
     this->sizefile = sizefile;
     this->bitrate = bitrate;
     this->address = address;
@@ -25,8 +25,8 @@ public:
     return sizefile/bitrate;
   }
 
-  char* getHash(){
-    return (char *)hash;
+  string getHash(){
+    return (string)hash;
   }
 
   string getFilename(){
