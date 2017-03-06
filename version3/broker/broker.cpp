@@ -6,10 +6,45 @@
 #include <dirent.h>
 #include <vector>
 
-#define CHUNK_SIZE 1000
 
 using namespace std;
 using namespace zmqpp;
+
+class charge {
+  private:
+    int sizefile = 0;
+    int bitrate = 0;
+    string address = "x";
+    string namefile = "x";
+    string hash;
+  public:
+    charge (int sizefile, int bitrate, string address, string namefile, string hash){
+      this->sizefile = sizefile;
+      this->bitrate = bitrate;
+      this->address = address;
+      this->namefile = namefile;
+      this->hash = hash;
+    }
+    int getPriority(){
+      return sizefile/bitrate;
+    }
+
+    string getHash(){
+      return (string)hash;
+    }
+
+    string getFilename(){
+      return namefile;
+    }
+  //virtual ~charge ();
+};
+
+class Compare{
+  public:
+    bool operator() ( charge *l,  charge *r) {
+        return l->getPriority() > r->getPriority();
+    }
+};
 
 class userFile{
   private:
@@ -179,8 +214,9 @@ class allUsers {
 
 };
 
-allUsers *users = new allUsers(); //Info about file of users ************************************************************
+allUsers *users = new allUsers(); //Info about file of users *********************************************************************
 locatefile * LF = new locatefile(); // infor about where i can find the file (address with sha1)
+priority_queue<charge*,vector<charge*>, Compare> pq; //priority_queue ************************************************************
 
 message login(const string &user, const string &password) {
   message data;
