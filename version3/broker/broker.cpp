@@ -5,7 +5,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <vector>
-
+#include <queue>
 
 using namespace std;
 using namespace zmqpp;
@@ -16,7 +16,7 @@ class charge {
     int bitrate = 0;
     string address = "x";
     string namefile = "x";
-    string hash;
+    string hash = "x";
   public:
     charge (int sizefile, int bitrate, string address, string namefile, string hash){
       this->sizefile = sizefile;
@@ -25,17 +25,10 @@ class charge {
       this->namefile = namefile;
       this->hash = hash;
     }
-    int getPriority(){
-      return sizefile/bitrate;
-    }
-
-    string getHash(){
-      return (string)hash;
-    }
-
-    string getFilename(){
-      return namefile;
-    }
+    int getPriority(){return sizefile/bitrate;}
+    string getHash(){return (string)hash;}
+    string getFilename(){return namefile;}
+    string getDirServer(){return address;}
   //virtual ~charge ();
 };
 
@@ -89,11 +82,14 @@ class locatefile {
     }
 
     void addFile(const string &sha1, const string &address){
-      fserver.insert(make_pair(sha1,address));
-      ofstream outFile;
-      outFile.open("dirserver.txt", ios::app);
-      outFile << sha1<<" "<< address<<"\n";;
-      outFile.close();
+      if (fserver.find(sha1) == fserver.end()) {
+        fserver.insert(make_pair(sha1,address));
+        ofstream outFile;
+        outFile.open("dirserver.txt", ios::app);
+        outFile << sha1<<" "<< address<<"\n";;
+        outFile.close();
+      }
+      else{std::cout << "Already exist that SHA1 " << '\n';}
     }
 
     string findFile(const string &sha1) {
@@ -101,7 +97,6 @@ class locatefile {
     }
     //virtual ~locatefile ();
   };
-
 
 struct keyPair {
     bool operator()(const pair<string,string>& k) const{
@@ -137,8 +132,29 @@ class allUsers {
       }
 
     void addFile(string user, string pass, int size, string sha1, string filename){
-      //string cstr = new char[sha1.length() + 1];
-      //strcpy(cstr, sha1.c_str());
+      vector<string> v;
+      string temp;
+      ifstream inFile;
+      inFile.open("file.txt", ios::binary);
+      while( !inFile.eof() ){
+      	getline(inFile, temp);
+      	if (temp.find(user) != string::npos && temp.find(pass) != string::npos && temp.find(sha1) == string::npos) {
+      	  temp = temp.substr(0, temp.size()-1);
+          temp = temp+"1 "+to_string(size)+" "+sha1+" "+filename+" 0\n";
+          cout << temp << '\n';
+          v.push_back(temp);
+      	}
+        else{v.push_back(temp+"\n");}
+      }
+      inFile.close();
+
+      ofstream outFile;
+      outFile.open("file.txt", ios::trunc);
+      for (size_t i = 0; i < v.size(); i++) {
+        outFile << v[i];
+      }
+      outFile.close();
+
       userFile aux(size, sha1, filename);
       users.insert(make_pair(make_pair(user,pass),vector<userFile>()));
       users[make_pair(user,pass)].push_back(aux);
@@ -171,7 +187,7 @@ class allUsers {
         input = line.substr(0, strpos);
 
         if (input == user) {
-          std::cout << "El usuario ya existe" << '\n';
+          cout << "El usuario ya existe" << '\n';
           return true;
         }
       }
@@ -206,10 +222,9 @@ class allUsers {
     string findFileSha1(const string &user, const string &password, const string &nameFile) {
       vector<userFile> v = users[make_pair(user,password)];
       for (size_t i = 0; i < v.size(); i++) {
-        if (nameFile == v[i].getName()) {
-          return v[i].getSha1();
-        }
+        if (nameFile == v[i].getName()) {return v[i].getSha1();}
       }
+      return "SHA1 not found";
     }
 
 };
@@ -231,39 +246,77 @@ message login(const string &user, const string &password) {
   return data;//Message containing user files.
 }
 
-string messageHandlerClient(message &m, socket *socket_broker, socket *socket_server){
+string messageHandlerClient(message &m, socket *socket_client, socket *socket_server){
 
   string op, pass, user, address;
   m >> op >> user >> pass >> address;
 
   cout << "Operation :" <<op<< '\n';
+  cout << "User :" <<user<< '\n';
+  cout << "Password :" <<pass<< '\n';
+  cout << "Address :" <<address<< '\n';
 
   if (op == "login") {
     message data = login(user, pass);
-    socket_broker->send(data);
+    socket_client->send(data);
     return "You are logged";
   }
   else if(op == "download") {
     string sha1,namefile;
     message data;
+    charge * aux = pq.top();
 
     m >> namefile;
     sha1 = users->findFileSha1(user, pass, namefile );
     address = LF->findFile(sha1);
     cout << "This is the sha1 : "<< sha1 << '\n';
     cout << "This is the address : "<< address << '\n';
-    //readfile(user, *s, user, part);
+
+    socket_server->connect(aux->getDirServer());
+
+    data <<"read"<< address << namefile << sha1 <<0;
+    socket_server->send(data);
+    pq.pop();
     return "You have read";
   }
   else if(op == "upload"){
+    message data;
     string sha1,namefile;
     int size;
+    charge * aux = pq.top();
+
     m >> namefile >> sha1 >> size;
-    //writefile(user,(string  )m.raw_data(5), size, user, *s, option );
+
+    users->addFile(user, pass, size, sha1, namefile);
+
+    pq.pop();
+    LF->addFile(sha1, aux->getDirServer());
+    socket_server->connect(aux->getDirServer());
+
+    data <<"write"<< address << namefile << sha1 <<size;
+    socket_server->send(data);
+
     return "You have written";
   }
   else{
     return "You have not chosen";
+  }
+}
+void messageHandlerSever(message &m, socket *socket_client, socket *socket_server){
+  string dir_server, op;
+  int size;
+  int bitrate;
+
+  m >>op >>dir_server >> size >> bitrate;
+
+  if (op == "addme") {
+    charge * a = new charge(size, bitrate, dir_server, "sin nombre", "no tiene");
+    pq.push(a);
+
+    std::cout << "Server address: "<<pq.top()->getDirServer() << '\n';
+    cout <<"Name of the file: "<< pq.top()->getFilename() << endl;
+    cout <<"Priority: "<< pq.top()->getPriority() << endl;
+
   }
 }
 
@@ -281,10 +334,9 @@ int main(int argc, char const *argv[]) {
   socket_client.bind("tcp://*:5555");
   socket_server.bind("tcp://*:5556");
 
-  std::cout << "I'm in the socket_client function" << '\n';
+  cout << "I'm in the socket_client function" << '\n';
 
   while (true) {
-    std::cout << "has :" << p.has_input(socket_client) <<'\n';
     if(p.poll()){
       if (p.has_input(socket_client)) {
         message msg;
@@ -292,7 +344,9 @@ int main(int argc, char const *argv[]) {
         messageHandlerClient(msg, &socket_client, &socket_server);
       }
       if (p.has_input(socket_server)) {
-        /* code */
+        message msg;
+        socket_server.receive(msg);
+        messageHandlerSever(msg, &socket_client, &socket_server);
       }
     }
   }
