@@ -88,7 +88,6 @@ void uploadfile(string name, socket *s){
       i++;
       aux = "app";
     }
-    s->send("OK"); //OK up server
     infile.close();
   }
 
@@ -114,19 +113,19 @@ void downloadfile(const string& name, socket *s){
       }
       part++;
     }
-    s->send("ok"); //OK down server
   }
 
-int main() {
+
+int main(int argc, char const *argv[]) {
   cout << "This is the client\n";
 
   context ctx;
   socket socket_broker(ctx, socket_type::req);
-  socket socket_server(ctx, socket_type::rep);
+  socket socket_server(ctx, socket_type::req);
 
   message m;
   message myfiles;
-  string nameFile, user, password, aux, address = "tcp://*:6666";
+  string nameFile, user, password, aux;
   int n = 0,size;
   int standardin =fileno(stdin);
 
@@ -138,7 +137,6 @@ int main() {
 
   cout << "Connecting to tcp port 5555\n";
   socket_broker.connect("tcp://localhost:5555");
-  socket_server.bind(address);
 
   cout << "User: ";
   cin >> user;
@@ -146,18 +144,15 @@ int main() {
   cin >> password;
   cout << endl<< endl;
 
-  address = "tcp://localhost:6666"; //CHANGE HERE
-
-
 
   while (true) {
     if(p.poll()){
       if (p.has_input(standardin)) {
-        m <<"login"<< user << password << address;
+        m <<"login"<< user << password;
         socket_broker.send(m);
         socket_broker.receive(myfiles);
 
-        cout << "Parts in message of myfiles : " << myfiles.parts()<< '\n';
+        cout << "\nParts in message of myfiles : " << myfiles.parts()<< '\n';
         size = myfiles.parts();
         cout << '\n';
         cout << "These are your files in the server: " << '\n';
@@ -174,12 +169,12 @@ int main() {
 
         switch (n) {
           case 1:{
+            string dir;
             message myfile;
             cout << "Enter the file's name: " << '\n';
             cin >> nameFile;
-            myfile<<"download"<< user<<password<<address<<nameFile;
+            myfile<<"download"<< user<<password<<nameFile;
             socket_broker.send(myfile);
-            socket_broker.receive(myfile);// OK 1
             break;
           }
           case 2:{
@@ -192,26 +187,33 @@ int main() {
 
             sha1 = getSha1(nameFile);
             size = filesize(nameFile);
-            myfile<<"upload"<< user<<password<<address<<nameFile<<sha1<<size;
+            myfile<<"upload"<< user<<password<<nameFile<<sha1<<size;
             socket_broker.send(myfile);
-            socket_broker.receive(myfile);//OK 1
+
             break;
           }
 
         }
       }
       if (p.has_input(socket_broker)) {
+        string op,dir_server;
+        message m;
 
-      }
-      if (p.has_input(socket_server)) {
-        string op;
-        message opfile;
-        socket_server.receive(opfile);
-        opfile >> op;
+        socket_broker.receive(m);
+
+        m >>op >>dir_server;
+        cout << "(server)connect to " << dir_server<< '\n';
+
+        while (dir_server.find("*") != string::npos)
+          dir_server.replace(dir_server.find("*"), 1, "localhost");
+
+        socket_server.connect(dir_server);
+
         if (op == "read") {
           downloadfile(nameFile, &socket_server);
         }
         if (op == "write") {
+          std::cout << "I'm gonna write" << '\n';
           uploadfile(nameFile, &socket_server);
         }
       }
