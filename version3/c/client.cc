@@ -122,6 +122,9 @@ int main(int argc, char const *argv[]) {
   context ctx;
   socket socket_broker(ctx, socket_type::req);
   socket socket_server(ctx, socket_type::req);
+  string ip_broker;
+  std::cout << "Ingrese: ./client ip::puerto(broker)" << '\n';
+  ip_broker = argv[1];
 
   message m;
   message myfiles;
@@ -136,7 +139,7 @@ int main(int argc, char const *argv[]) {
   p.add(standardin, poller::poll_in);
 
   cout << "Connecting to tcp port 5555\n";
-  socket_broker.connect("tcp://localhost:5555");
+  socket_broker.connect(ip_broker);
 
   cout << "User: ";
   cin >> user;

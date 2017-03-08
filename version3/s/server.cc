@@ -65,7 +65,8 @@ void addMe(socket &socket_broker, const string &dir_server, int &size, int &bitr
 }
 
 int main(int argc, char const *argv[]) {
-  string dir_server = "tcp://localhost:6666";
+  std::cout << "Ingrese ./server ip::puerto(broker)" << '\n';
+  string dir_server;
   dir_server = argv[1];
   int size = 0;
   int bitrate = 6;
