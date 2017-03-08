@@ -249,12 +249,11 @@ message login(const string &user, const string &password) {
 string messageHandlerClient(message &m, socket *socket_client, socket *socket_server){
 
   string op, pass, user, address;
-  m >> op >> user >> pass >> address;
+  m >> op >> user >> pass;
 
   cout << "Operation :" <<op<< '\n';
   cout << "User :" <<user<< '\n';
   cout << "Password :" <<pass<< '\n';
-  cout << "Address :" <<address<< '\n';
 
   if (op == "login") {
     message data = login(user, pass);
@@ -263,8 +262,8 @@ string messageHandlerClient(message &m, socket *socket_client, socket *socket_se
   }
   else if(op == "download") {
     string sha1,namefile;
-    message data;
-    charge * aux = pq.top();
+    message sdata, cdata;
+    string dir_server;
 
     m >> namefile;
     sha1 = users->findFileSha1(user, pass, namefile );
@@ -272,32 +271,29 @@ string messageHandlerClient(message &m, socket *socket_client, socket *socket_se
     cout << "This is the sha1 : "<< sha1 << '\n';
     cout << "This is the address : "<< address << '\n';
 
-    socket_server->connect(aux->getDirServer());
-
-    data <<"read"<< address << namefile << sha1 <<0;
-    socket_server->send(data);
-    socket_client->send("ok");// OK 1
+    sdata << sha1 <<0;
+    socket_server->send(sdata);
+    cdata <<"read"<< address;
+    socket_client->send(cdata);
     pq.pop();
     return "You have read";
   }
   else if(op == "upload"){
-    message data;
+    message sdata, cdata;
     string sha1,namefile;
     int size;
-    charge * aux = pq.top();
 
+    charge * aux = pq.top();
+    address = aux->getDirServer();
     m >> namefile >> sha1 >> size;
 
     users->addFile(user, pass, size, sha1, namefile);
-
-    pq.pop();
     LF->addFile(sha1, aux->getDirServer());
-    socket_server->connect(aux->getDirServer());
-
-    data <<"write"<< address << namefile << sha1 <<size;
-    socket_server->send(data);
-    std::cout << "/* message */" << '\n';
-    socket_client->send("ok");// OK 1
+    sdata << sha1 << size;
+    socket_server->send(sdata);
+    cdata <<"write"<< address;
+    socket_client->send(cdata);// dir client 1
+    pq.pop();
 
     return "You have written";
   }
