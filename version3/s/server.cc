@@ -65,9 +65,10 @@ void addMe(socket &socket_broker, const string &dir_server, int &size, int &bitr
 }
 
 int main(int argc, char const *argv[]) {
-  std::cout << "Ingrese ./server ip::puerto(broker)" << '\n';
-  string dir_server;
+  std::cout << "Ingrese ./server tcp://ip::puerto(broker) tcp://ip::puerto(client) " << '\n';
+  string dir_server, dir_client;
   dir_server = argv[1];
+  dir_client = argv[2];
   int size = 0;
   int bitrate = 6;
 
@@ -77,10 +78,10 @@ int main(int argc, char const *argv[]) {
   socket socket_broker(ctx, socket_type::req);
   socket socket_client(ctx, socket_type::rep);
 
-  cout << "Connecting socket to tcp port 5556 (broker)\n";
+  cout << "Connecting socket to tcp port "<<dir_server<<"\n";
 
-  socket_broker.connect("tcp://localhost:5556");
-  socket_client.bind(dir_server);
+  socket_broker.connect(dir_server);
+  socket_client.bind(dir_client);
   poller p;
 
   p.add(socket_client, poller::poll_in);
