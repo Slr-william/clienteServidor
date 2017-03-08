@@ -321,6 +321,10 @@ void messageHandlerSever(message &m, socket *socket_client, socket *socket_serve
 
 int main(int argc, char const *argv[]) {
   cout << "This is the broker\n";
+  string ip_client, ip_server;
+  std::cout << "Ingrese: ./broker ip::puerto(cliente) ip::puerto(server)" << '\n';
+  ip_client = argv[1];
+  ip_server = argv[2];
 
   context ctx;
   socket socket_client(ctx, socket_type::rep);
@@ -330,8 +334,8 @@ int main(int argc, char const *argv[]) {
 
   p.add(socket_client, poller::poll_in);
   p.add(socket_server, poller::poll_in);
-  socket_client.bind("tcp://*:5555");
-  socket_server.bind("tcp://*:5556");
+  socket_client.bind(ip_client);
+  socket_server.bind(ip_server);
 
   cout << "I'm in the socket_client function" << '\n';
 
