@@ -16,9 +16,9 @@ ifstream::pos_type filesize(string filename){
     return in.tellg();
 }
 
-void doHash(string string, char * mdString) {
+void doHash(char * string, char * mdString, int size) {
   unsigned char digest[SHA_DIGEST_LENGTH];
-  SHA1((unsigned char*)&string, string.length(), (unsigned char*)&digest);
+  SHA1((unsigned char*)string, size, (unsigned char*)&digest);
   for(int i = 0; i < SHA_DIGEST_LENGTH; i++){
        sprintf(&mdString[i*2], "%02x", (unsigned int)digest[i]);
   }
@@ -37,8 +37,7 @@ string getSha1(const string &filename){
   infile.seekg(0, infile.beg);
   infile.read (buffer,size);
   //*******************
-  text = string(buffer);
-  doHash(text,sha1);
+  doHash(buffer,sha1, size);
   key = string(sha1);
   //*******************
   infile.close();
@@ -46,7 +45,7 @@ string getSha1(const string &filename){
   return key;
 }
 
-void uploadfile(string name, socket *s, const string &user){
+void uploadfile(string name, socket *s){
     ifstream infile(name,ios::binary|ios::ate);
 
     message m;
@@ -78,7 +77,7 @@ void uploadfile(string name, socket *s, const string &user){
       buffer = new char [chunk];
       infile.read (buffer,chunk);
 
-      m <<"write"<<name<<chunk<<user<<aux;
+      m <<"write"<<chunk<<aux;
       m.push_back(buffer,chunk);
       s->send(m);
 
@@ -92,7 +91,7 @@ void uploadfile(string name, socket *s, const string &user){
     infile.close();
   }
 
-void downloadfile(const string& name, socket *s,const string &user){
+void downloadfile(const string& name, socket *s){
     long size;
     message m;
     message data;
@@ -101,7 +100,7 @@ void downloadfile(const string& name, socket *s,const string &user){
     ofstream outfile(name,ios::binary | ios::trunc);
     outfile.close();
     while (true) {
-      m <<"read"<< name <<user<<part;
+      m <<"read"<< name <<part;
       s->send(m);
 
       if(s->receive(data)){
@@ -121,21 +120,29 @@ int main() {
 
   context ctx;
   socket socket_broker(ctx, socket_type::req);
-  socket socket_server(ctx, socket_type::dealer);
+  socket socket_server(ctx, socket_type::rep);
 
   message m;
   message myfiles;
-  string nameFile, user, password, aux, address = "127.0.0.0";
+  string nameFile, user, password, aux, address = "tcp://*:6666";
   int n = 0,size;
+
+  poller p;
+
+  p.add(socket_broker, poller::poll_in);
+  p.add(socket_server, poller::poll_in);
 
   cout << "Connecting to tcp port 5555\n";
   socket_broker.connect("tcp://localhost:5555");
+  socket_server.bind(address);
 
   cout << "User: ";
   cin >> user;
   cout << "Password: ";
   cin >> password;
-  cout << endl;
+  cout << endl<< endl;
+
+  address = "tcp://localhost:6666"; //CHANGE HERE
 
   m <<"login"<< user << password << address;
   socket_broker.send(m);
@@ -151,7 +158,8 @@ int main() {
   }
 
   cout << "-For download a file put 1" << '\n';
-  cout << "-For upload a file put 2" << '\n'<<endl;
+  cout << "-For upload a file put 2" << '\n';
+  cout << "Enter the option: ";
   cin >> n;
   cout << endl;
 
@@ -162,7 +170,6 @@ int main() {
       cin >> nameFile;
       myfile<<"download"<< user<<password<<address<<nameFile;
       socket_broker.send(myfile);
-      //downloadfile(nameFile,&socket_broker,user);
       break;
     }
     case 2:{
@@ -172,12 +179,33 @@ int main() {
 
       cout << "Enter the file's name: " << '\n';
       cin >> nameFile;
+
       sha1 = getSha1(nameFile);
       size = filesize(nameFile);
-
       myfile<<"upload"<< user<<password<<address<<nameFile<<sha1<<size;
       socket_broker.send(myfile);
-      //uploadfile(nameFile, &socket_broker, user);
+      break;
+    }
+
+  }
+
+  while (true) {
+    if(p.poll()){
+      if (p.has_input(socket_broker)) {
+
+      }
+      if (p.has_input(socket_server)) {
+        string op;
+        message opfile;
+        socket_server.receive(opfile);
+        opfile >> op;
+        if (op == "read") {
+          downloadfile(nameFile, &socket_server);
+        }
+        if (op == "write") {
+          uploadfile(nameFile, &socket_server);
+        }
+      }
     }
   }
 
