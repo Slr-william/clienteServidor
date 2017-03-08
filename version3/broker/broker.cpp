@@ -12,20 +12,20 @@ using namespace zmqpp;
 
 class charge {
   private:
-    int sizefile = 0;
+    int sizeServer = 0;
     int bitrate = 0;
     string address = "x";
     string namefile = "x";
     string hash = "x";
   public:
-    charge (int sizefile, int bitrate, string address, string namefile, string hash){
-      this->sizefile = sizefile;
+    charge (int sizeServer, int bitrate, string address, string namefile, string hash){
+      this->sizeServer = sizeServer;
       this->bitrate = bitrate;
       this->address = address;
       this->namefile = namefile;
       this->hash = hash;
     }
-    int getPriority(){return sizefile/bitrate;}
+    int getPriority(){return (sizeServer+bitrate)*0.5;}
     string getHash(){return (string)hash;}
     string getFilename(){return namefile;}
     string getDirServer(){return address;}
@@ -276,6 +276,7 @@ string messageHandlerClient(message &m, socket *socket_client, socket *socket_se
 
     data <<"read"<< address << namefile << sha1 <<0;
     socket_server->send(data);
+    socket_client->send("ok");// OK 1
     pq.pop();
     return "You have read";
   }
@@ -295,6 +296,8 @@ string messageHandlerClient(message &m, socket *socket_client, socket *socket_se
 
     data <<"write"<< address << namefile << sha1 <<size;
     socket_server->send(data);
+    std::cout << "/* message */" << '\n';
+    socket_client->send("ok");// OK 1
 
     return "You have written";
   }

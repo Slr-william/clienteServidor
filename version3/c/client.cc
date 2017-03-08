@@ -88,6 +88,7 @@ void uploadfile(string name, socket *s){
       i++;
       aux = "app";
     }
+    s->send("OK"); //OK up server
     infile.close();
   }
 
@@ -113,6 +114,7 @@ void downloadfile(const string& name, socket *s){
       }
       part++;
     }
+    s->send("ok"); //OK down server
   }
 
 int main() {
@@ -126,11 +128,13 @@ int main() {
   message myfiles;
   string nameFile, user, password, aux, address = "tcp://*:6666";
   int n = 0,size;
+  int standardin =fileno(stdin);
 
   poller p;
 
   p.add(socket_broker, poller::poll_in);
   p.add(socket_server, poller::poll_in);
+  p.add(standardin, poller::poll_in);
 
   cout << "Connecting to tcp port 5555\n";
   socket_broker.connect("tcp://localhost:5555");
@@ -144,53 +148,58 @@ int main() {
 
   address = "tcp://localhost:6666"; //CHANGE HERE
 
-  m <<"login"<< user << password << address;
-  socket_broker.send(m);
-  socket_broker.receive(myfiles);
 
-  cout << "Parts in message of myfiles : " << myfiles.parts()<< '\n';
-  size = myfiles.parts();
-
-  cout << "These are your files in the server: " << '\n';
-  for (int i = 0; i < size; i++) {
-    myfiles >> aux;
-    cout << i <<". "<<aux <<'\n';
-  }
-
-  cout << "-For download a file put 1" << '\n';
-  cout << "-For upload a file put 2" << '\n';
-  cout << "Enter the option: ";
-  cin >> n;
-  cout << endl;
-
-  switch (n) {
-    case 1:{
-      message myfile;
-      cout << "Enter the file's name: " << '\n';
-      cin >> nameFile;
-      myfile<<"download"<< user<<password<<address<<nameFile;
-      socket_broker.send(myfile);
-      break;
-    }
-    case 2:{
-      int size;
-      string sha1;
-      message myfile;
-
-      cout << "Enter the file's name: " << '\n';
-      cin >> nameFile;
-
-      sha1 = getSha1(nameFile);
-      size = filesize(nameFile);
-      myfile<<"upload"<< user<<password<<address<<nameFile<<sha1<<size;
-      socket_broker.send(myfile);
-      break;
-    }
-
-  }
 
   while (true) {
     if(p.poll()){
+      if (p.has_input(standardin)) {
+        m <<"login"<< user << password << address;
+        socket_broker.send(m);
+        socket_broker.receive(myfiles);
+
+        cout << "Parts in message of myfiles : " << myfiles.parts()<< '\n';
+        size = myfiles.parts();
+        cout << '\n';
+        cout << "These are your files in the server: " << '\n';
+        for (int i = 0; i < size; i++) {
+          myfiles >> aux;
+          cout << i <<". "<<aux <<'\n';
+        }
+
+        cout << "-For download a file put 1" << '\n';
+        cout << "-For upload a file put 2" << '\n';
+        cout << "Enter the option: ";
+        cin >> n;
+        cout << endl;
+
+        switch (n) {
+          case 1:{
+            message myfile;
+            cout << "Enter the file's name: " << '\n';
+            cin >> nameFile;
+            myfile<<"download"<< user<<password<<address<<nameFile;
+            socket_broker.send(myfile);
+            socket_broker.receive(myfile);// OK 1
+            break;
+          }
+          case 2:{
+            int size;
+            string sha1;
+            message myfile;
+
+            cout << "Enter the file's name: " << '\n';
+            cin >> nameFile;
+
+            sha1 = getSha1(nameFile);
+            size = filesize(nameFile);
+            myfile<<"upload"<< user<<password<<address<<nameFile<<sha1<<size;
+            socket_broker.send(myfile);
+            socket_broker.receive(myfile);//OK 1
+            break;
+          }
+
+        }
+      }
       if (p.has_input(socket_broker)) {
 
       }
