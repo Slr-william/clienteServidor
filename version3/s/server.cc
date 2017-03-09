@@ -118,6 +118,7 @@ int main(int argc, char const *argv[]) {
         }
         if (op == "read") {
           r >> namefile >> part;
+          cout << "The Operation is : "<<op << " " <<namefile<<" "<<part<<'\n';
           readfile(sha1, socket_client, part);
         }
       }
