@@ -2,8 +2,6 @@
 #include <string>
 #include <zmqpp/zmqpp.hpp>
 #include <fstream>
-#include <sys/stat.h>
-#include <dirent.h>
 #include <vector>
 #include <queue>
 

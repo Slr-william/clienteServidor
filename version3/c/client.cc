@@ -2,8 +2,6 @@
 #include <string>
 #include <zmqpp/zmqpp.hpp>
 #include <fstream>
-#include <sys/stat.h>
-#include <dirent.h>
 #include <openssl/sha.h> //sudo apt-get install libssl-dev
 
 #define CHUNK_SIZE 1000
