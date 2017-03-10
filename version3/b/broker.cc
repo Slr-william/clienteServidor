@@ -29,7 +29,7 @@ class charge {
 class Compare{
   public:
     bool operator() ( charge *l,  charge *r) {
-        return l->getPriority() > r->getPriority();
+        return l->getPriority() < r->getPriority();
     }
 };
 
