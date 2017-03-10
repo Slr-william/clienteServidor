@@ -1,5 +1,5 @@
-USER 	= home/wilinux
-CC		= g++ -std=c++11 -Wall -L/$(USER)/zmq/lib -I/$(USER)/zmq/include
+USER 	= Users/usuarioutp
+CC		= g++ -std=c++11 -Wall -L/$(USER)/zmq/lib -I/$(USER)/zmq/include -L/usr/local/opt/openssl/lib -I/usr/local/opt/openssl/include
 LDFLAGS = -lpthread -lzmqpp -lzmq
 
 all: server client broker
