@@ -10,8 +10,11 @@ using namespace std;
 using namespace zmqpp;
 
 ifstream::pos_type filesize(string filename){
-    ifstream in(filename, ifstream::ate | ifstream::binary);
-    return in.tellg();
+  int size = 0;
+    ifstream in(filename, ifstream::ate | ios::binary);
+    size = in.tellg();
+    in.close();
+    return size;
 }
 
 void doHash(char * string, char * mdString, int size) {
@@ -31,7 +34,9 @@ string getSha1(const string &filename){
   char * buffer;
   long size;
   size = infile.tellg();
+  cout<<"In sha1 "<<size<<" name :"<<filename<<endl;
   buffer = new char [size];
+  cout<<"In sha1 -2"<<endl;
   infile.seekg(0, infile.beg);
   infile.read (buffer,size);
   //*******************
@@ -43,7 +48,7 @@ string getSha1(const string &filename){
   return key;
 }
 
-void uploadfile(string name, socket *s){
+void uploadfile(string name, socket *s, string sha1){
     ifstream infile(name,ios::binary|ios::ate);
 
     message m;
@@ -51,7 +56,7 @@ void uploadfile(string name, socket *s){
     char * buffer;
     long size;
     string aux = "over";
-    long chunk = CHUNK_SIZE;
+    int chunk = CHUNK_SIZE;
     int i = 1;
     bool sw = true;
     // get size of file
@@ -75,7 +80,7 @@ void uploadfile(string name, socket *s){
       buffer = new char [chunk];
       infile.read (buffer,chunk);
 
-      m <<"write"<<chunk<<aux;
+      m <<"write"<<chunk<<aux<<sha1;
       m.push_back(buffer,chunk);
       s->send(m);
 
@@ -89,16 +94,16 @@ void uploadfile(string name, socket *s){
     infile.close();
   }
 
-void downloadfile(const string& name, socket *s){
-    long size;
+void downloadfile(const string& name, socket *s, string sha1){
+    int size;
     message m;
     message data;
-    long part = 0;
+    int part = 0;
     string finished;
     ofstream outfile(name,ios::binary | ios::trunc);
     outfile.close();
     while (true) {
-      m <<"read"<< name <<part;
+      m <<"read"<< name <<part << sha1;
       s->send(m);
 
       if(s->receive(data)){
@@ -108,25 +113,27 @@ void downloadfile(const string& name, socket *s){
         outfile.write((char*)data.raw_data(1),size);
         outfile.close();
         if (finished == "end") {break;}
+        part++;
       }
-      part++;
     }
   }
 
 
 int main(int argc, char const *argv[]) {
+  if (argc < 1){
+    cout << "Enter./client ip::port(broker) " << '\n';
+    return -1;
+  }
   cout << "This is the client\n";
-
   context ctx;
   socket socket_broker(ctx, socket_type::req);
   socket socket_server(ctx, socket_type::req);
-  string ip_broker;
-  std::cout << "Ingrese: ./client ip::puerto(broker)" << '\n';
-  ip_broker = argv[1];
+  string ip_broker = "tcp://";
+  ip_broker = ip_broker + argv[1];
 
   message m;
   message myfiles;
-  string nameFile, user, password, aux;
+  string nameFile, user, password, aux, sha1;
   int n = 0,size;
   int standardin =fileno(stdin);
 
@@ -143,8 +150,7 @@ int main(int argc, char const *argv[]) {
   cin >> user;
   cout << "Password: ";
   cin >> password;
-  cout << endl<< endl;
-
+  cout << endl;
 
   while (true) {
     if(p.poll()){
@@ -155,15 +161,14 @@ int main(int argc, char const *argv[]) {
 
         cout << "\nParts in message of myfiles : " << myfiles.parts()<< '\n';
         size = myfiles.parts();
-        cout << '\n';
         cout << "These are your files in the server: " << '\n';
         for (int i = 0; i < size; i++) {
           myfiles >> aux;
           cout << i <<". "<<aux <<'\n';
         }
 
-        cout << "-For download a file put 1" << '\n';
-        cout << "-For upload a file put 2" << '\n';
+        cout << "-For download 1" << '\n';
+        cout << "-For upload 2" << '\n';
         cout << "Enter the option: ";
         cin >> n;
         cout << endl;
@@ -179,15 +184,16 @@ int main(int argc, char const *argv[]) {
             break;
           }
           case 2:{
-            int size;
-            string sha1;
             message myfile;
 
             cout << "Enter the file's name: " << '\n';
             cin >> nameFile;
 
-            sha1 = getSha1(nameFile);
+            cout<<"name: "<<nameFile<<endl;
+
             size = filesize(nameFile);
+            cout<<"size: "<<size<<endl;
+            sha1 = getSha1(nameFile);
             myfile<<"upload"<< user<<password<<nameFile<<sha1<<size;
             socket_broker.send(myfile);
 
@@ -199,10 +205,10 @@ int main(int argc, char const *argv[]) {
       if (p.has_input(socket_broker)) {
         string op,dir_server;
         message m;
-
+        cout<<"I'v received a message broker"<<endl;
         socket_broker.receive(m);
 
-        m >>op >>dir_server;
+        m >>op >>dir_server>>sha1;
         cout << "(server)connect to " << dir_server<< '\n';
 
         while (dir_server.find("*") != string::npos)
@@ -211,11 +217,11 @@ int main(int argc, char const *argv[]) {
         socket_server.connect(dir_server);
 
         if (op == "read") {
-          downloadfile(nameFile, &socket_server);
+          downloadfile(nameFile, &socket_server,sha1);
         }
         if (op == "write") {
           std::cout << "I'm gonna write" << '\n';
-          uploadfile(nameFile, &socket_server);
+          uploadfile(nameFile, &socket_server, sha1);
         }
       }
     }
