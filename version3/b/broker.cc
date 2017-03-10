@@ -320,11 +320,11 @@ void messageHandlerSever(message &m, socket *socket_client, socket *socket_serve
 
 int main(int argc, char const *argv[]) {
 
-  cout << "This is the broker\n";
   if (argc != 3){
     cout << "Enter: ./broker port(for clients) port(for servers) " << '\n';
     return 0;
   }
+  cout << "This is the broker\n";
 
   string ip_client= "tcp://*:", ip_server = "tcp://*:";
 

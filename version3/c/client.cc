@@ -86,7 +86,6 @@ void uploadfile(string name, socket *s, string sha1){
 
       s->receive(r);
       r >> aux;
-      cout << aux <<i <<'\n';
       delete[] buffer;
       i++;
       aux = "app";
@@ -120,7 +119,7 @@ void downloadfile(const string& name, socket *s, string sha1){
 
 
 int main(int argc, char const *argv[]) {
-  if (argc < 1){
+  if (argc != 2){
     cout << "Enter./client ip::port(broker) " << '\n';
     return -1;
   }
@@ -150,8 +149,6 @@ int main(int argc, char const *argv[]) {
   cin >> user;
   cout << "Password: ";
   cin >> password;
-  cout << endl;
-
   while (true) {
     if(p.poll()){
       if (p.has_input(standardin)) {
@@ -205,7 +202,6 @@ int main(int argc, char const *argv[]) {
       if (p.has_input(socket_broker)) {
         string op,dir_server;
         message m;
-        cout<<"I'v received a message broker"<<endl;
         socket_broker.receive(m);
 
         m >>op >>dir_server>>sha1;
@@ -220,7 +216,6 @@ int main(int argc, char const *argv[]) {
           downloadfile(nameFile, &socket_server,sha1);
         }
         if (op == "write") {
-          std::cout << "I'm gonna write" << '\n';
           uploadfile(nameFile, &socket_server, sha1);
         }
       }

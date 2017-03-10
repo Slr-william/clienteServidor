@@ -67,7 +67,7 @@ void addMe(socket &socket_broker, const string &dir_server, int &size, int &size
 }
 
 int main(int argc, char const *argv[]) {
-  if (argc < 2){
+  if (argc != 3 ){
     cout << "Enter ./server ip::port(broker) ip::port(server) " << '\n';
     return -1;
   }
