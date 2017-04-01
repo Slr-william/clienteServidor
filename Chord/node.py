@@ -2,7 +2,6 @@
 import zmq
 import random
 import sys
-import time
 import hashlib
 import json
 import string
@@ -12,74 +11,95 @@ hash_table = {}  # to store the keys for this node
 clients = {}     # to store the identities and response addresses of clients
 node_name = ''   # node dentifier
 context = ''
-lower_bound = '' # predecessor's id
-upper_bound = '' # successor's id
+lower_bound = ''  # predecessor's id
+upper_bound = ''  # successor's id
 
 # Returns a randomly generated identifier for the node.
-# TODO: This is weak! 
-def get_id(simple=True, length = 6):
+# TODO: This is weak !
+
+
+def get_id(simple=True, length=6):
     if (simple):
         possible = list(string.ascii_lowercase)
-        rnd = random.randint(0,len(possible))
+        rnd = random.randint(0, len(possible))
         return str(possible[rnd])
     else:
-        rnd = random.randint(0,100)
+        rnd = random.randint(0, 100)
         id = hashlib.sha1()
         id.update(str(rnd))
         return str(id.hexdigest())[:length]
 
-# Tests whether this node is responsible for storing key 
+# Tests whether this node is responsible for storing key
+
+
 def in_range(key):
     if upper_bound >= lower_bound:
         return key > lower_bound and key <= upper_bound
     else:
         return key >= lower_bound or key < upper_bound
 
-def interval():
-    return '({},{}]'.format(lower_bound,upper_bound)
 
-def localOP(request,sc):
+def interval():
+    return '({},{}]'.format(lower_bound, upper_bound)
+
+
+def localOP(request, sc):
     operation = request['type']
     if operation == 'insert':
         key = request['key']
         value = request['value']
         hash_table[key] = value
-        print("Stored {} {} at {}".format(key,value,node_name))
-    elif operation == 'search'
-        answer_client = {}
-        key = request[key]
-        value_to_client = hash_table.get(key,None)
-        if value_to_client == None:
-            sc.send("That key doesn't exist")
-        else:
+        print("Stored {} {} at {}".format(key, value, node_name))  # Comment
+        sc.send("The value has been inserted")
+    elif operation == 'search':
+        key = request['key']
+        value_to_client = hash_table.get(key, None)
+
+        if value_to_client is None:
             answer_client = {
-                'value' : key####################Here i go
+                'value': "error",
+                'key': "error"
             }
+            sc.send_json(answer_client)
+        else:
+            print("Added- {} : {} ".format(key, value_to_client))  # Comment
+            answer_client = {
+                'value': value_to_client,
+                'key': key
+            }
+            sc.send_json(answer_client)
+    elif operation == 'delete':
+            key = request['key']
+            if hash_table.get(key, None) is None:
+                sc.send("This key doesn't exist")
+            else:
+                hash_table.pop(key)
+                sc.send("The element has been eliminated")
     else:
         print("Local operation not implemented")
 
 
 def handleClientRequest(request, successorSocket):
     clientId = request['id']
-    clientAddress =  request['answer_to']
+    clientAddress = request['answer_to']
     sc = context.socket(zmq.PUSH)
     sc.connect(clientAddress)
     clients[clientId] = sc
 
     key = request['key']
     if in_range(key):
-        print("Key {} is mine!!!!".format(key))
-        localOP(request,sc)
+        print("Key {} is mine!!!!".format(key))  # Comment
+        localOP(request, sc)
     else:
-        print("Key {} is not mine, delegating...".format(key))
+        print("Key {} is not mine, delegating...".format(key))  # Comment
         successorSocket.send_json(request)
+
 
 def main():
     global hash_table, clients, node_name, context, lower_bound, upper_bound
 
     if len(sys.argv) != 2:
-        print ('Enter configuration file')
-        exit()
+        print('Enter configuration file')
 
     configFile = open(sys.argv[1], 'r')
     config = json.load(configFile)
@@ -104,7 +124,7 @@ def main():
 
     if bootstrap:
         # The first step is to send the node's identifier to the succcesor.
-        # That way every node computes the range of keys it is responsible 
+        # That way every node computes the range of keys it is responsible
         # for.
         message = {'type': 'send-id', 'data': node_name}
         successorSocket.send(json.dumps(message))
@@ -117,12 +137,10 @@ def main():
         print("Responsible for keys in {}".format(interval()))
     else:
         print("Not implemented yet!")
-        exit()
-
     # All the client's requests from clients arrive to this socket
     client_socket = context.socket(zmq.PULL)
     client_socket.bind("tcp://*:" + clientPort)
-    print ('Listening to clients on {}'.format(clientPort))
+    print('Listening to clients on {}'.format(clientPort))
 
     poller = zmq.Poller()
     poller.register(mySocket, zmq.POLLIN)
