@@ -4,7 +4,7 @@
 #include <fstream>
 #include <openssl/sha.h> //sudo apt-get install libssl-dev
 
-#define CHUNK_SIZE 1000
+#define CHUNK_SIZE 10000
 
 using namespace std;
 using namespace zmqpp;
@@ -35,13 +35,13 @@ string getSha1(const string &filename){
   long size;
   size = infile.tellg();
   cout<<"In sha1 "<<size<<" name :"<<filename<<endl;
-  buffer = new char [size];
-  cout<<"In sha1 -2"<<endl;
+  buffer = new char [size];  
   infile.seekg(0, infile.beg);
   infile.read (buffer,size);
   //*******************
   doHash(buffer,sha1, size);
   key = string(sha1);
+  cout<<"In sha1 2:"<<key <<endl;
   //*******************
   infile.close();
   delete[] buffer;
@@ -51,21 +51,15 @@ string getSha1(const string &filename){
 void uploadfile(string name, socket *s, string sha1){
     ifstream infile(name,ios::binary|ios::ate);
 
-    message m;
-    message r;
+    message m,r;
     char * buffer;
     long size;
     string aux = "over";
-    int chunk = CHUNK_SIZE;
-    int i = 1;
+    int chunk = CHUNK_SIZE, i = 1;
     bool sw = true;
-    // get size of file
     size = infile.tellg();
     cout << "This is the size of the file : " <<size <<'\n';
-    // allocate memory for file content
     infile.seekg(0, infile.beg);
-
-    // read content of infile
     while (sw) {
       if (i*CHUNK_SIZE > size && CHUNK_SIZE < size) {
         chunk = size - (i-1)*chunk;
@@ -83,9 +77,6 @@ void uploadfile(string name, socket *s, string sha1){
       m <<"write"<<chunk<<aux<<sha1;
       m.push_back(buffer,chunk);
       s->send(m);
-
-      s->receive(r);
-      r >> aux;
       delete[] buffer;
       i++;
       aux = "app";
@@ -93,19 +84,17 @@ void uploadfile(string name, socket *s, string sha1){
     infile.close();
   }
 
-void downloadfile(const string& name, socket *s, string sha1){
-    int size;
-    message m;
-    message data;
-    int part = 0;
+void downloadfile(const string& name, socket *s, string sha1, const string& ip_port_server, socket * socket_server_receive){
+    int size, part = 0;
+    message m, data;
     string finished;
     ofstream outfile(name,ios::binary | ios::trunc);
     outfile.close();
-    while (true) {
-      m <<"read"<< name <<part << sha1;
-      s->send(m);
 
-      if(s->receive(data)){
+    while (true) {
+      m <<"read"<< name <<part << sha1 << ip_port_server;
+      s->send(m);
+      if(socket_server_receive->receive(data)){
         data >> finished;
         size = data.size(1);
         ofstream outfile(name,ios::binary | ios::app);
@@ -119,16 +108,21 @@ void downloadfile(const string& name, socket *s, string sha1){
 
 
 int main(int argc, char const *argv[]) {
-  if (argc != 2){
-    cout << "Enter./client ip::port(broker) " << '\n';
+  if (argc != 3){
+    cout << "Enter./client ip::port(broker) (my)ip:port(listen to server)" << '\n';
     return -1;
   }
   cout << "This is the client\n";
-  context ctx;
-  socket socket_broker(ctx, socket_type::req);
-  socket socket_server(ctx, socket_type::req);
   string ip_broker = "tcp://";
+  string ip_port_server = "tcp://";
   ip_broker = ip_broker + argv[1];
+  ip_port_server = ip_port_server + argv[2];
+
+  context ctx;
+  std::cout<<"hereeeeeeeeeeeeeeee"<< "tcp://*:"+(ip_port_server.substr( ip_port_server.length() - 4))<<endl;
+  socket socket_broker(ctx, socket_type::req);
+  socket socket_server_receive(ctx, socket_type::pull);
+  socket_server_receive.bind("tcp://*:"+ (ip_port_server.substr( ip_port_server.length() - 4) ));
 
   message m;
   message myfiles;
@@ -139,7 +133,6 @@ int main(int argc, char const *argv[]) {
   poller p;
 
   p.add(socket_broker, poller::poll_in);
-  p.add(socket_server, poller::poll_in);
   p.add(standardin, poller::poll_in);
 
   cout << "Connecting to tcp port 5555\n";
@@ -210,10 +203,11 @@ int main(int argc, char const *argv[]) {
         while (dir_server.find("*") != string::npos)
           dir_server.replace(dir_server.find("*"), 1, "localhost");
 
+        socket socket_server(ctx, socket_type::push);
         socket_server.connect(dir_server);
 
         if (op == "read") {
-          downloadfile(nameFile, &socket_server,sha1);
+          downloadfile(nameFile, &socket_server,sha1, ip_port_server, &socket_server_receive);
         }
         if (op == "write") {
           uploadfile(nameFile, &socket_server, sha1);

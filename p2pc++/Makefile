@@ -1,5 +1,6 @@
 #export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$HOME/zmq/lib
-USER 	= Users/usuarioutp
+#USER 	= Users/usuarioutp
+USER 	= home/wilinux
 CC		= g++ -std=c++11 -Wall -L/$(USER)/zmq/lib -I/$(USER)/zmq/include -L/usr/local/opt/openssl/lib -I/usr/local/opt/openssl/include
 LDFLAGS = -lpthread -lzmqpp -lzmq
 
