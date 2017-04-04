@@ -149,16 +149,16 @@ int main(int argc, char const *argv[]) {
         socket_broker.send(m);
         socket_broker.receive(myfiles);
 
-        cout << "\nParts in message of myfiles : " << myfiles.parts()<< '\n';
         size = myfiles.parts();
-        cout << "These are your files in the server: " << '\n';
+        cout << "\nTotal files: " << size << '\n';
+        cout << "\nThese are your files in the server: " << '\n';
         for (int i = 0; i < size; i++) {
           myfiles >> aux;
           cout << i <<". "<<aux <<'\n';
         }
 
-        cout << "-For download 1" << '\n';
-        cout << "-For upload 2" << '\n';
+        cout << "-For download press 1" << '\n';
+        cout << "-For upload press 2" << '\n';
         cout << "Enter the option: ";
         cin >> n;
         cout << endl;
@@ -189,6 +189,9 @@ int main(int argc, char const *argv[]) {
 
             break;
           }
+          default:{
+
+          } 
 
         }
       }
