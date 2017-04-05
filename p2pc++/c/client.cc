@@ -53,9 +53,8 @@ void uploadfile(string name, socket *s, string sha1){
 
     message m,r;
     char * buffer;
-    long size;
     string aux = "over";
-    int chunk = CHUNK_SIZE, i = 1;
+    int chunk = CHUNK_SIZE, i = 1, size;
     bool sw = true;
     size = infile.tellg();
     cout << "This is the size of the file : " <<size <<'\n';
@@ -106,6 +105,66 @@ void downloadfile(const string& name, socket *s, string sha1, const string& ip_p
     }
   }
 
+void initUser(string *user, string *pass){
+  cout << "Enter the next data: \n";
+  cout << "User: ";
+  cin >> *user;
+  cout << "Password: ";
+  cin >> *pass;
+}
+
+bool menu(socket *socket_broker, string *user, string *password, string *nameFile, string *sha1, int *size){
+
+  int n = 0;
+
+  cout << "-For download press 1" << '\n';
+  cout << "-For upload press 2" << '\n';
+  cout << "-For login with another account press 3 \n";
+  cout << "-Exit press 4" << '\n';
+  cout << "Enter the option: ";
+  while(!(cin >> n)){
+    cin.clear();
+    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    cout << "Invalid input.  Try again: ";
+  }
+
+  if(n == 4){return true;}
+  switch (n) {
+    case 1:{
+      string dir;
+      message myfile;
+      cout << "Enter the file's name: " << '\n';
+      cin >> *nameFile;
+      myfile<<"download"<< *user<<*password<<*nameFile;
+      socket_broker->send(myfile);
+      break;
+    }
+    case 2:{
+      message myfile;
+
+      cout << "Enter the file's name: " << '\n';
+      cin >> *nameFile;
+
+      cout<<"name: "<<*nameFile<<endl;
+
+      *size = filesize(*nameFile);
+      cout<<"size: "<<*size<<endl;
+      *sha1 = getSha1(*nameFile);
+      myfile<<"upload"<< *user<<*password<<*nameFile<<*sha1<<*size;
+      socket_broker->send(myfile);
+      break;
+    }
+    case 3:{
+      initUser(user, password);
+      break;
+    }
+    default:{ 
+      cout<<"Enter a correct option."<<endl;
+      menu(socket_broker, user, password, nameFile, sha1, size);
+    }
+  }
+  return false;
+}
 
 int main(int argc, char const *argv[]) {
   if (argc != 3){
@@ -119,7 +178,6 @@ int main(int argc, char const *argv[]) {
   ip_port_server = ip_port_server + argv[2];
 
   context ctx;
-  std::cout<<"hereeeeeeeeeeeeeeee"<< "tcp://*:"+(ip_port_server.substr( ip_port_server.length() - 4))<<endl;
   socket socket_broker(ctx, socket_type::req);
   socket socket_server_receive(ctx, socket_type::pull);
   socket_server_receive.bind("tcp://*:"+ (ip_port_server.substr( ip_port_server.length() - 4) ));
@@ -127,21 +185,20 @@ int main(int argc, char const *argv[]) {
   message m;
   message myfiles;
   string nameFile, user, password, aux, sha1;
-  int n = 0,size;
+  int size;
   int standardin =fileno(stdin);
 
   poller p;
 
   p.add(socket_broker, poller::poll_in);
+  p.add(socket_server_receive, poller::poll_in);
   p.add(standardin, poller::poll_in);
 
   cout << "Connecting to tcp port 5555\n";
   socket_broker.connect(ip_broker);
 
-  cout << "User: ";
-  cin >> user;
-  cout << "Password: ";
-  cin >> password;
+  initUser(&user, &password);
+
   while (true) {
     if(p.poll()){
       if (p.has_input(standardin)) {
@@ -157,43 +214,8 @@ int main(int argc, char const *argv[]) {
           cout << i <<". "<<aux <<'\n';
         }
 
-        cout << "-For download press 1" << '\n';
-        cout << "-For upload press 2" << '\n';
-        cout << "Enter the option: ";
-        cin >> n;
-        cout << endl;
+        if(menu(&socket_broker, &user, &password, &nameFile, &sha1, &size)){break;}
 
-        switch (n) {
-          case 1:{
-            string dir;
-            message myfile;
-            cout << "Enter the file's name: " << '\n';
-            cin >> nameFile;
-            myfile<<"download"<< user<<password<<nameFile;
-            socket_broker.send(myfile);
-            break;
-          }
-          case 2:{
-            message myfile;
-
-            cout << "Enter the file's name: " << '\n';
-            cin >> nameFile;
-
-            cout<<"name: "<<nameFile<<endl;
-
-            size = filesize(nameFile);
-            cout<<"size: "<<size<<endl;
-            sha1 = getSha1(nameFile);
-            myfile<<"upload"<< user<<password<<nameFile<<sha1<<size;
-            socket_broker.send(myfile);
-
-            break;
-          }
-          default:{
-
-          } 
-
-        }
       }
       if (p.has_input(socket_broker)) {
         string op,dir_server;
@@ -211,10 +233,15 @@ int main(int argc, char const *argv[]) {
 
         if (op == "read") {
           downloadfile(nameFile, &socket_server,sha1, ip_port_server, &socket_server_receive);
+          socket_server.disconnect(dir_server);
         }
         if (op == "write") {
           uploadfile(nameFile, &socket_server, sha1);
+          socket_server.disconnect(dir_server);
         }
+      }
+      if (p.has_input(socket_server_receive)){
+        
       }
     }
   }

@@ -70,8 +70,7 @@ int main(int argc, char const *argv[]) {
 
   dir_broker = dir_broker + argv[1];
   dir_server = dir_server + argv[2];
-  int size = 0;
-  int sizefile = 0;
+  int size = 0, sizefile = 0, standardin =fileno(stdin);
 
   cout << "This is the server\n";
 
@@ -88,6 +87,7 @@ int main(int argc, char const *argv[]) {
 
   p.add(socket_client, poller::poll_in);
   p.add(socket_broker, poller::poll_in);
+  p.add(standardin, poller::poll_in);
 
   string op, namefile, sha1, option, dir_client_to_push;
   int sizechunk, part;
@@ -97,7 +97,7 @@ int main(int argc, char const *argv[]) {
   while (true) {
     if(p.poll()){
       if (p.has_input(socket_broker)) {
-
+        
       }
       if (p.has_input(socket_client)) {
         message r;
@@ -115,6 +115,13 @@ int main(int argc, char const *argv[]) {
           readfile(sha1, &socket_clientSend, part);
           socket_clientSend.disconnect(dir_client_to_push);
         }
+      }
+      if (p.has_input(standardin)){
+        string option;
+        cout<<"Comannds:\n -exit \n "<<endl;
+        cout<<"Enter your option: ";
+        cin >> option;
+        if (option == "exit"){break;}
       }
     }
   }

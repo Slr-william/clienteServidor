@@ -29,7 +29,7 @@ class charge {
 class Compare{
   public:
     bool operator() ( charge *l,  charge *r) {
-        return l->getPriority() < r->getPriority();
+        return l->getPriority() > r->getPriority();
     }
 };
 
@@ -186,11 +186,12 @@ class allUsers {
         input = line.substr(0, strpos);
 
         if (input == user) {
-          cout << "El usuario ya existe" << '\n';
+          cout << "User exist" << '\n';
           return true;
         }
       }
       inFile.close();
+      cout<<"Creating new user"<<endl;
       return false;
     }
 
@@ -204,10 +205,10 @@ class allUsers {
       }
     }
 
-    message myfiles(string user){
+    message myfiles(const string& user, const string& password){
       message data;
       for ( auto it = users.begin(); it != users.end(); ++it ){
-        if(it->first.first == user){
+        if(it->first.first == user && it->first.second == password){
           vector<userFile> v = it->second;
           for (int i = 0; i < (int)v.size(); i++) {
             data << v[i].getName();
@@ -246,7 +247,7 @@ message login(const string &user, const string &password) {
   if (!users.exist(user)) {
     users.addUser(user, password);
   }
-  data = users.myfiles(user);
+  data = users.myfiles(user, password);
   if(data.parts() == 0){
     data<<aux;
   }
@@ -258,10 +259,11 @@ void messageHandlerClient(message &m, socket *socket_client, socket *socket_serv
 
   string op, pass, user, address;
   m >> op >> user >> pass;
-
+  cout <<"//////////////////////////"<<endl;
   cout << "Operation :" <<op<< '\n';
   cout << "User :" <<user<< '\n';
   cout << "Password :" <<pass<< '\n';
+  cout <<"//////////////////////////"<<endl;
 
   if (op == "login") {
     message data = login(user, pass);
@@ -274,11 +276,9 @@ void messageHandlerClient(message &m, socket *socket_client, socket *socket_serv
 
     m >> namefile;
     sha1 = users.findFileSha1(user, pass, namefile );
-    //sizefile = users.findFileSize(user, pass, namefile);
     address = LF.findFile(sha1);
 
-    cout << "This is the sha1 : "<< sha1 << '\n';
-    cout << "This is the address : "<< address << '\n';
+    cout <<"Name of file: "<<namefile<<", Sha1 : "<< sha1 <<", Address : "<< address << '\n';
 
     cdata <<"read"<< address << sha1;
     socket_client->send(cdata);
@@ -288,16 +288,21 @@ void messageHandlerClient(message &m, socket *socket_client, socket *socket_serv
     string sha1,namefile;
     int size;
 
-    charge * aux = pq.top();
-    address = aux->getDirServer();
+    charge * server = pq.top();	
+    pq.pop();
+    address = server->getDirServer();
     m >> namefile >> sha1 >> size;
-    aux->addFile(size);
-    aux->addSize(size);
-    cout<<"Priority: "<<aux->getPriority()<<endl;
+    server->addFile(size);
+    server->addSize(size);
+    cout<<"*******************************"<<endl;
+    cout<<"Server address: "<<server->getDirServer()<<endl;
+    cout<<"Priority: "<<server->getPriority()<<endl;
+    cout<<"*******************************"<<endl;
+    pq.push(server);
     users.addFile(user, pass, size, sha1, namefile);
-    LF.addFile(sha1, aux->getDirServer());
+    LF.addFile(sha1, server->getDirServer());
     cdata <<"write"<< address << sha1;
-    socket_client->send(cdata);// dir client 1
+    socket_client->send(cdata);
   }
 }
 
@@ -310,10 +315,11 @@ void messageHandlerSever(message &m, socket *socket_client, socket *socket_serve
 
   if (op == "addme") {
     charge * a = new charge(size, sizefile, dir_server);
+    cout<<"*******************************"<<endl;
+    cout << "Server address: "<<a->getDirServer() <<endl;
+    cout << "Priority: "<< a->getPriority() << endl;
+    cout<<"*******************************"<<endl;
     pq.push(a);
-    cout << "Server address: "<<pq.top()->getDirServer() << '\n';
-    cout <<"Priority: "<< pq.top()->getPriority() << endl;
-
   }
 }
 
@@ -347,7 +353,13 @@ int main(int argc, char const *argv[]) {
 
   while (true) {
     if (p.has_input(standardin)) {
-      break;
+    	string option;
+    	cout<<"Comannds:\n -exit \n -users \n -filesLoc"<<endl;
+    	cout<<"Enter your option: ";
+    	cin >> option;
+    	if (option == "exit"){break;}
+    	if (option == "users"){users.print();}
+    	if (option == "filesLoc"){LF.print();}
     }
     if(p.poll()){
       if (p.has_input(socket_client)) {
