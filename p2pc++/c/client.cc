@@ -3,9 +3,11 @@
 #include <zmqpp/zmqpp.hpp>
 #include <fstream>
 #include <openssl/sha.h> //sudo apt-get install libssl-dev
+#include "../json.hpp"
 
 #define CHUNK_SIZE 10000
 
+using json = nlohmann::json;
 using namespace std;
 using namespace zmqpp;
 
@@ -48,7 +50,8 @@ string getSha1(const string &filename){
   return key;
 }
 
-void uploadfile(string name, socket *s, string sha1){
+void uploadfile(string name, socket *s, string sha1, json all_servers){
+
     ifstream infile(name,ios::binary|ios::ate);
 
     message m,r;
@@ -60,25 +63,29 @@ void uploadfile(string name, socket *s, string sha1){
     cout << "This is the size of the file : " <<size <<'\n';
     infile.seekg(0, infile.beg);
     while (sw) {
+      cout << "(server)connect to " << all_servers[i-1]<< '\n';
+
+      //while (all_servers[i-1].find("*") != string::npos)
+      //  all_servers[i-1].replace(all_servers[i-1].find("*"), 1, "localhost");
+      s->connect(all_servers[i-1]);
+
       if (i*CHUNK_SIZE > size && CHUNK_SIZE < size) {
         chunk = size - (i-1)*chunk;
         sw = false;
-        aux = "app";
       }
       else if(CHUNK_SIZE > size){
         chunk = size;
         sw = false;
-        aux = "over";
       }
       buffer = new char [chunk];
       infile.read (buffer,chunk);
 
-      m <<"write"<<chunk<<aux<<sha1;
+      m <<"write"<<chunk<<sha1<<i;
       m.push_back(buffer,chunk);
       s->send(m);
       delete[] buffer;
+      s->disconnect(all_servers[i-1]);
       i++;
-      aux = "app";
     }
     infile.close();
   }
@@ -181,6 +188,7 @@ int main(int argc, char const *argv[]) {
   socket socket_broker(ctx, socket_type::req);
   socket socket_server_receive(ctx, socket_type::pull);
   socket_server_receive.bind("tcp://*:"+ (ip_port_server.substr( ip_port_server.length() - 4) ));
+  socket socket_server(ctx, socket_type::push);
 
   message m;
   message myfiles;
@@ -218,26 +226,21 @@ int main(int argc, char const *argv[]) {
 
       }
       if (p.has_input(socket_broker)) {
-        string op,dir_server;
+        string op, dir_server;
         message m;
         socket_broker.receive(m);
 
+        json all_address;
         m >>op >>dir_server>>sha1;
-        cout << "(server)connect to " << dir_server<< '\n';
 
-        while (dir_server.find("*") != string::npos)
-          dir_server.replace(dir_server.find("*"), 1, "localhost");
-
-        socket socket_server(ctx, socket_type::push);
-        socket_server.connect(dir_server);
+        all_address = json::parse(dir_server);
 
         if (op == "read") {
           downloadfile(nameFile, &socket_server,sha1, ip_port_server, &socket_server_receive);
-          socket_server.disconnect(dir_server);
+          
         }
         if (op == "write") {
-          uploadfile(nameFile, &socket_server, sha1);
-          socket_server.disconnect(dir_server);
+          uploadfile(nameFile, &socket_server, sha1, all_address);
         }
       }
       if (p.has_input(socket_server_receive)){

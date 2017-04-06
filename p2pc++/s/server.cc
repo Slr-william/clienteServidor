@@ -3,9 +3,11 @@
 #include <zmqpp/zmqpp.hpp>
 #include <fstream>
 #include <vector>
+#include "../json.hpp"
 
 #define CHUNK_SIZE 10000
 
+using json = nlohmann::json;
 using namespace std;
 using namespace zmqpp;
 
@@ -42,17 +44,18 @@ void readfile (const string &name, socket *s, int part){
   delete[] buffer;
 }
 
-void writefile (string name, char * text, int size, socket *s, const string &op){
-  if (op == "over") {
-    ofstream outfile(name ,ios::binary | ios::trunc);
-    outfile.write(text, size );
-    outfile.close();
-  }
-  else{
+void writefile (string name, char * text, int size, socket *s, int part){
+  //if (op == "over") {
+  name = name+".Part"+to_string(part);
+  ofstream outfile( name ,ios::binary | ios::trunc);
+  outfile.write(text, size );
+  outfile.close();
+  //}
+  /*else{
     ofstream outfile(name ,ios::binary | ios::app);
     outfile.write(text, size );
     outfile.close();
-  }
+  }*/
 }
 
 void addMe(socket &socket_broker, const string &dir_server, int &size, int &sizefile) {
@@ -104,9 +107,9 @@ int main(int argc, char const *argv[]) {
         socket_client.receive(r);
         r >> op;
         if (op == "write") {
-          r >> sizechunk >>option>> sha1;
-          cout << "The Operation is : "<<op << " " <<sizechunk<<" "<<option<<'\n';
-          writefile(sha1,(char * )r.raw_data(4), sizechunk, &socket_client, option );
+          r >> sizechunk >> sha1 >> part;
+          cout << "The Operation is : "<<op << " " <<sizechunk<<'\n';
+          writefile(sha1,(char * )r.raw_data(4), sizechunk, &socket_client, part);
         }
         if (op == "read") {
           r >> namefile >> part >> sha1 >> dir_client_to_push;

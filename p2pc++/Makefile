@@ -17,4 +17,4 @@ client: ./c/client.cc
 	$(CC) -o ./c/client ./c/client.cc $(LDFLAGS) -lcrypto
 
 clean:
-	rm -f ./c/client ./s/server ./b/broker ./b/dirserver.txt ./b/file.txt
+	rm -f ./c/client ./s/server ./b/broker ./b/dirserver.txt ./b/file.txt ./s/*.Part*

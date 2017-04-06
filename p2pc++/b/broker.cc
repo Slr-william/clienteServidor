@@ -5,7 +5,11 @@
 #include <vector>
 #include <queue>
 #include <unordered_map>
+#include "../json.hpp"
 
+#define CHUNK_SIZE 10000
+
+using json = nlohmann::json;
 using namespace std;
 using namespace zmqpp;
 
@@ -52,43 +56,96 @@ class userFile{
 
 class locatefile {
   private:
-    unordered_map< string,string> fserver;
-
+    unordered_map< string,vector<string>> fserver;
   public:
     locatefile (){
       ifstream inFile;
-      string sha1;
-      string address;
+      string sha1, address;
+      int another;
 
       inFile.open("dirserver.txt");
       while (inFile) {
-        inFile >> sha1 >>address;
-        fserver.insert(make_pair(sha1,address));
+        vector<string> v;
+        inFile >> sha1 >>address >> another;
+        v.push_back(address);
+        if (another == 1){
+        	while(another != 0) {
+        	    inFile >> address >> another;
+        	    v.push_back(address);
+        		}
+        	fserver.insert(make_pair(sha1,v));
+        	}
+        else{
+          fserver.insert(make_pair(sha1,v));
+          }
+
         }
       inFile.close();
     }
 
     void print(){
       for ( auto it = fserver.begin(); it != fserver.end(); ++it ){
-        cout << " <" << it->first <<", "<<it->second<<" >"<<endl;
+        cout << " <" << it->first <<"> "<<endl;
+        vector<string> v = it->second;
+        for (unsigned int i = 0; i < v.size(); i++){
+          cout<<"\t"<<i<<") "<<v[i]<<endl;
+        }
+        cout<<endl;
       }
     }
 
-    void addFile(const string &sha1, const string &address){
+    void addFile(const string &sha1, vector<string> address){
+      int another = 1;
       if (fserver.find(sha1) == fserver.end()) {
-        fserver.insert(make_pair(sha1,address));
         ofstream outFile;
         outFile.open("dirserver.txt", ios::app);
-        outFile << sha1<<" "<< address<<"\n";;
+        outFile << sha1;
+        if (address.size() > 1)
+        {
+          for (unsigned int i = 0; i < address.size(); i++){
+            if (i+1 >= address.size()){another = 0;}
+            outFile <<" "<< address[i] <<" "<<another<<" ";
+          }
+          outFile<<'\n';
+        }
+        else{
+          another = 0;
+          outFile<<" "<<address[0]<<" "<< another<<"\n";
+        }
         outFile.close();
+        fserver.insert(make_pair(sha1,address));
       }
       else{std::cout << "Already exist that SHA1 " << '\n';}
     }
 
-    string findFile(const string &sha1) {
+    vector<string> findFile(const string &sha1) {
       return fserver[sha1];
     }
-  };
+};
+
+vector<int> sizes(int size){
+  vector<int> v;
+  bool finish = true;
+  int  i = 1;
+  while(finish) {
+    int chunk = CHUNK_SIZE;
+
+    if (i*CHUNK_SIZE > size && CHUNK_SIZE < size) {
+      chunk = size - (i-1)*chunk;
+      finish = false;
+    }
+    else if(CHUNK_SIZE > size){
+      chunk = size;
+      finish = false;
+    }
+    else if(CHUNK_SIZE == size){
+      finish = false;
+    }
+    v.push_back(chunk);
+    i++;
+  }
+  return v;
+}
 
 struct keyPair {
     bool operator()(const pair<string,string>& k) const{
@@ -270,7 +327,7 @@ void messageHandlerClient(message &m, socket *socket_client, socket *socket_serv
     socket_client->send(data);
   }
   else if(op == "download") {
-    string sha1,namefile;
+    /*string sha1,namefile;
     message cdata;
     string dir_server;
 
@@ -281,27 +338,36 @@ void messageHandlerClient(message &m, socket *socket_client, socket *socket_serv
     cout <<"Name of file: "<<namefile<<", Sha1 : "<< sha1 <<", Address : "<< address << '\n';
 
     cdata <<"read"<< address << sha1;
-    socket_client->send(cdata);
+    socket_client->send(cdata);*/
   }
   else if(op == "upload"){
     message cdata;
     string sha1,namefile;
     int size;
+    vector<string> dir_servers;
+    vector<int> partSize;
 
-    charge * server = pq.top();	
-    pq.pop();
-    address = server->getDirServer();
     m >> namefile >> sha1 >> size;
-    server->addFile(size);
-    server->addSize(size);
-    cout<<"*******************************"<<endl;
-    cout<<"Server address: "<<server->getDirServer()<<endl;
-    cout<<"Priority: "<<server->getPriority()<<endl;
-    cout<<"*******************************"<<endl;
-    pq.push(server);
+    partSize = sizes(size);
+
+    for (unsigned int i = 0; i < partSize.size(); i++){
+    	charge * server = pq.top();	
+	    pq.pop();
+	    dir_servers.push_back(server->getDirServer()); //  Vector with all addresses of servers which will save a part of file
+	    cout<<"*******************************"<<endl;
+    	cout<<"Server address: "<<server->getDirServer()<<endl;
+    	cout<<"Priority: "<<server->getPriority()<<endl;
+    	cout<<"*******************************"<<endl;
+	    server->addFile(partSize[i]);
+	    server->addSize(partSize[i]);
+	    pq.push(server);
+    }
     users.addFile(user, pass, size, sha1, namefile);
-    LF.addFile(sha1, server->getDirServer());
-    cdata <<"write"<< address << sha1;
+    LF.addFile(sha1, dir_servers);
+
+    json j_vector(dir_servers);
+
+    cdata <<"write"<<j_vector.dump()<< sha1;
     socket_client->send(cdata);
   }
 }
