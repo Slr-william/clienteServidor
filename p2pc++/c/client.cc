@@ -90,24 +90,27 @@ void uploadfile(string name, socket *s, string sha1, json all_servers){
     infile.close();
   }
 
-void downloadfile(const string& name, socket *s, string sha1, const string& ip_port_server, socket * socket_server_receive){
-    int size, part = 0;
+void downloadfile(const string& name, socket *s, string sha1, const string& ip_port_server, socket * socket_server_receive, json all_servers){
+    int size, part = 1;
     message m, data;
     string finished;
     ofstream outfile(name,ios::binary | ios::trunc);
     outfile.close();
 
     while (true) {
-      m <<"read"<< name <<part << sha1 << ip_port_server;
+      cout << "(server)connect to " << all_servers[0]<< '\n';
+      s->connect(all_servers[0]);
+      m <<"read"<< name <<part<< sha1 << ip_port_server;
       s->send(m);
       if(socket_server_receive->receive(data)){
-        data >> finished;
-        size = data.size(1);
+        size = data.size(0);
         ofstream outfile(name,ios::binary | ios::app);
-        outfile.write((char*)data.raw_data(1),size);
+        outfile.write((char*)data.raw_data(0),size);
         outfile.close();
-        if (finished == "end") {break;}
         part++;
+        s->disconnect(all_servers[0]);
+        all_servers.erase(all_servers.begin());
+        if (all_servers.size() == 0) {break;}
       }
     }
   }
@@ -236,7 +239,7 @@ int main(int argc, char const *argv[]) {
         all_address = json::parse(dir_server);
 
         if (op == "read") {
-          downloadfile(nameFile, &socket_server,sha1, ip_port_server, &socket_server_receive);
+          downloadfile(nameFile, &socket_server,sha1, ip_port_server, &socket_server_receive, all_address);
           
         }
         if (op == "write") {

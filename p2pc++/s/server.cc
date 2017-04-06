@@ -14,32 +14,17 @@ using namespace zmqpp;
 void readfile (const string &name, socket *s, int part){
   message m;
   char * buffer;
-  int size, chunk = CHUNK_SIZE, seek = 0;
+  int size;
 
-  ifstream infile(name,ios::binary|ios::ate);
+  ifstream infile(name+".Part"+to_string(part),ios::binary|ios::ate);
   size = infile.tellg();
 
-  if (CHUNK_SIZE*(part+1) > size && CHUNK_SIZE < size) {
-    m << "end";
-    seek = (part+1)*chunk -size;
-    cout<<"end"<<endl; // comment
-  }
-  else if(CHUNK_SIZE >= size){
-    m << "end";
-    chunk = size;
-    cout<<"end"<<endl; // comment
-  }
-  else{
-    m << "continue";
-    cout<<"continue"<<endl; // comment
-  }
-
-  infile.seekg(chunk * part, infile.beg);
-  buffer = new char [chunk -seek];
-  infile.read (buffer,chunk -seek);
+  infile.seekg(0, infile.beg);
+  buffer = new char [size];
+  infile.read (buffer,size);
   infile.close();
 
-  m.push_back(buffer, chunk -seek);
+  m.push_back(buffer, size);
   s->send(m);
   delete[] buffer;
 }

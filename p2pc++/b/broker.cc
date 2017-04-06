@@ -327,18 +327,18 @@ void messageHandlerClient(message &m, socket *socket_client, socket *socket_serv
     socket_client->send(data);
   }
   else if(op == "download") {
-    /*string sha1,namefile;
+    string sha1,namefile;
     message cdata;
     string dir_server;
+    vector<string> address;
 
     m >> namefile;
     sha1 = users.findFileSha1(user, pass, namefile );
     address = LF.findFile(sha1);
 
-    cout <<"Name of file: "<<namefile<<", Sha1 : "<< sha1 <<", Address : "<< address << '\n';
-
-    cdata <<"read"<< address << sha1;
-    socket_client->send(cdata);*/
+    json j_addr(address);
+    cdata <<"read"<< j_addr.dump() << sha1;
+    socket_client->send(cdata);
   }
   else if(op == "upload"){
     message cdata;
