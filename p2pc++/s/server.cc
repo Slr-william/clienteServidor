@@ -5,7 +5,7 @@
 #include <vector>
 #include "../json.hpp"
 
-#define CHUNK_SIZE 10000
+#define CHUNK_SIZE 30000
 
 using json = nlohmann::json;
 using namespace std;
@@ -30,17 +30,10 @@ void readfile (const string &name, socket *s, int part){
 }
 
 void writefile (string name, char * text, int size, socket *s, int part){
-  //if (op == "over") {
   name = name+".Part"+to_string(part);
   ofstream outfile( name ,ios::binary | ios::trunc);
   outfile.write(text, size );
   outfile.close();
-  //}
-  /*else{
-    ofstream outfile(name ,ios::binary | ios::app);
-    outfile.write(text, size );
-    outfile.close();
-  }*/
 }
 
 void addMe(socket &socket_broker, const string &dir_server, int &size, int &sizefile) {

@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include "../json.hpp"
 
-#define CHUNK_SIZE 10000
+#define CHUNK_SIZE 30000
 
 using json = nlohmann::json;
 using namespace std;
@@ -200,7 +200,7 @@ class allUsers {
 
       ofstream outFile;
       outFile.open("file.txt", ios::trunc);
-      for (size_t i = 0; i < v.size(); i++) {
+      for (unsigned int i = 0; i < v.size(); i++) {
         outFile << v[i];
       }
       outFile.close();
@@ -278,7 +278,7 @@ class allUsers {
 
     string findFileSha1(const string &user, const string &password, const string &nameFile) {
       vector<userFile> v = users[make_pair(user,password)];
-      for (size_t i = 0; i < v.size(); i++) {
+      for (unsigned int i = 0; i < v.size(); i++) {
         if (nameFile == v[i].getName()) {return v[i].getSha1();}
       }
       return "SHA1 not found";
@@ -286,7 +286,7 @@ class allUsers {
 
     int findFileSize(const string &user, const string &password, const string &nameFile){
       vector<userFile> v = users[make_pair(user,password)];
-      for (size_t i = 0; i < v.size(); i++) {
+      for (unsigned int i = 0; i < v.size(); i++) {
         if (nameFile == v[i].getName()) {return v[i].getSize();}
       }
       return -1;

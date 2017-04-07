@@ -1,13 +1,13 @@
 #include <iostream>
-#include <string>
+#include <string.h>
 #include <zmqpp/zmqpp.hpp>
 #include <fstream>
 #include <openssl/sha.h> //sudo apt-get install libssl-dev
 #include "../json.hpp"
 #include <SFML/Audio.hpp>
-#include <queue>
+#include <stdlib.h>
 //#include<cstdint> // integer 64bites
-#define CHUNK_SIZE 10000
+#define CHUNK_SIZE 30000
 
 using json = nlohmann::json;
 using namespace std;
@@ -39,7 +39,7 @@ string getSha1(const string &filename){
   //******************
   ifstream infile(filename,ios::binary|ios::ate);
   char * buffer;
-  long size;
+  int size;
   size = infile.tellg();
   cout<<"In sha1 "<<size<<" name :"<<filename<<endl;
   buffer = new char [size];  
@@ -162,7 +162,8 @@ bool menu(socket *socket_broker, string *user, string *password, string *nameFil
   cout << "-For login with another account press 3 \n";
   cout << "-For listen a song press 4\n";
   cout << "-Stop music press 5\n";
-  cout << "-Exit press 6" << '\n';
+  cout << "-For see a video 6\n";
+  cout << "-Exit press 7" << '\n';
   cout << "Enter the option: ";
   while(!(cin >> n)){
     cin.clear();
@@ -170,7 +171,7 @@ bool menu(socket *socket_broker, string *user, string *password, string *nameFil
     cout << "Invalid input.  Try again: ";
   }
 
-  if(n == 6){return true;}
+  if(n == 7){return true;}
   switch (n) {
     case 1:{
       string dir;
@@ -213,8 +214,19 @@ bool menu(socket *socket_broker, string *user, string *password, string *nameFil
       sound.stop();
       break;
     }
+    case 6:{
+      string video;
+      cout<<"Type the files's name(video should be in your client): ";
+      cin >> video;
+      std::string str = "vlc "+video+" &";
+      char *cstr = new char[str.length() + 1];
+      strcpy(cstr, str.c_str());
+      system(cstr);
+      delete [] cstr;
+      break;
+    }
     default:{ 
-      cout<<"Enter a correct option."<<endl;
+      cout<<"\nEnter a correct option.\n"<<endl;
       menu(socket_broker, user, password, nameFile, sha1, size);
     }
   }
@@ -293,6 +305,7 @@ int main(int argc, char const *argv[]) {
         if (op == "listen"){
           listen(nameFile, &socket_server,sha1, ip_port_server, &socket_server_receive, all_address);
         }
+        cout<<"\nPresiona enter para desplegar el menu\n";
       }
       if (p.has_input(socket_server_receive)){
         
