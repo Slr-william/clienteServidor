@@ -4,12 +4,17 @@
 #include <fstream>
 #include <openssl/sha.h> //sudo apt-get install libssl-dev
 #include "../json.hpp"
-
+#include <SFML/Audio.hpp>
+#include <queue>
+//#include<cstdint> // integer 64bites
 #define CHUNK_SIZE 10000
 
 using json = nlohmann::json;
 using namespace std;
 using namespace zmqpp;
+
+sf::SoundBuffer filebuffer;
+sf::Sound sound;
 
 ifstream::pos_type filesize(string filename){
   int size = 0;
@@ -96,7 +101,6 @@ void downloadfile(const string& name, socket *s, string sha1, const string& ip_p
     string finished;
     ofstream outfile(name,ios::binary | ios::trunc);
     outfile.close();
-
     while (true) {
       cout << "(server)connect to " << all_servers[0]<< '\n';
       s->connect(all_servers[0]);
@@ -113,8 +117,34 @@ void downloadfile(const string& name, socket *s, string sha1, const string& ip_p
         if (all_servers.size() == 0) {break;}
       }
     }
-  }
+}
 
+void listen(const string& name, socket *s, string sha1, const string& ip_port_server, socket * socket_server_receive, json all_servers){
+    int size, part = 1;
+    message m, data;
+    string finished;
+    ofstream outfile(name,ios::binary | ios::trunc);
+    outfile.close();
+    while (true) {
+      cout << "(server)connect to " << all_servers[0]<< '\n';
+      s->connect(all_servers[0]);
+      m <<"read"<< name <<part<< sha1 << ip_port_server;
+      s->send(m);
+      if(socket_server_receive->receive(data)){
+        size = data.size(0);
+        ofstream outfile(name,ios::binary | ios::app);
+        outfile.write((char*)data.raw_data(0),size);
+        outfile.close();
+        filebuffer.loadFromFile(name);
+        sound.setBuffer(filebuffer);
+        sound.play();
+        part++;
+        s->disconnect(all_servers[0]);
+        all_servers.erase(all_servers.begin());
+        if (all_servers.size() == 0) {break;}
+      }
+    }
+}
 void initUser(string *user, string *pass){
   cout << "Enter the next data: \n";
   cout << "User: ";
@@ -130,7 +160,9 @@ bool menu(socket *socket_broker, string *user, string *password, string *nameFil
   cout << "-For download press 1" << '\n';
   cout << "-For upload press 2" << '\n';
   cout << "-For login with another account press 3 \n";
-  cout << "-Exit press 4" << '\n';
+  cout << "-For listen a song press 4\n";
+  cout << "-Stop music press 5\n";
+  cout << "-Exit press 6" << '\n';
   cout << "Enter the option: ";
   while(!(cin >> n)){
     cin.clear();
@@ -138,7 +170,7 @@ bool menu(socket *socket_broker, string *user, string *password, string *nameFil
     cout << "Invalid input.  Try again: ";
   }
 
-  if(n == 4){return true;}
+  if(n == 6){return true;}
   switch (n) {
     case 1:{
       string dir;
@@ -166,6 +198,19 @@ bool menu(socket *socket_broker, string *user, string *password, string *nameFil
     }
     case 3:{
       initUser(user, password);
+      break;
+    }
+    case 4:{
+      string dir;
+      message myfile;
+      cout << "Enter the file's name: " << '\n';
+      cin >> *nameFile;
+      myfile<<"listen"<< *user<<*password<<*nameFile;
+      socket_broker->send(myfile);
+      break;
+    }
+    case 5:{
+      sound.stop();
       break;
     }
     default:{ 
@@ -244,6 +289,9 @@ int main(int argc, char const *argv[]) {
         }
         if (op == "write") {
           uploadfile(nameFile, &socket_server, sha1, all_address);
+        }
+        if (op == "listen"){
+          listen(nameFile, &socket_server,sha1, ip_port_server, &socket_server_receive, all_address);
         }
       }
       if (p.has_input(socket_server_receive)){

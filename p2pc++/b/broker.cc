@@ -295,7 +295,7 @@ class allUsers {
 
 
 allUsers users = allUsers(); //Info about file of users *********************************************************************
-locatefile LF = locatefile(); // infor about where i can find the file (address with sha1)
+locatefile LF = locatefile(); // infor about where i can find the file (addresses with sha1)
 priority_queue<charge*,vector<charge*>, Compare> pq; //priority_queue ************************************************************
 
 message login(const string &user, const string &password) {
@@ -368,6 +368,20 @@ void messageHandlerClient(message &m, socket *socket_client, socket *socket_serv
     json j_vector(dir_servers);
 
     cdata <<"write"<<j_vector.dump()<< sha1;
+    socket_client->send(cdata);
+  }
+  else if(op == "listen"){
+  	string sha1,namefile;
+    message cdata;
+    string dir_server;
+    vector<string> address;
+
+    m >> namefile;
+    sha1 = users.findFileSha1(user, pass, namefile );
+    address = LF.findFile(sha1);
+
+    json j_addr(address);
+    cdata <<"listen"<< j_addr.dump() << sha1;
     socket_client->send(cdata);
   }
 }

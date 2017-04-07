@@ -14,7 +14,7 @@ server: ./s/server.cc
 	$(CC) -o ./s/server ./s/server.cc $(LDFLAGS)
 
 client: ./c/client.cc
-	$(CC) -o ./c/client ./c/client.cc $(LDFLAGS) -lcrypto
+	$(CC) -o ./c/client ./c/client.cc $(LDFLAGS) -lcrypto -lsfml-audio -lsfml-system
 
 clean:
 	rm -f ./c/client ./s/server ./b/broker ./b/dirserver.txt ./b/file.txt ./s/*.Part*
