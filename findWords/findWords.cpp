@@ -62,8 +62,7 @@ void rightPos(string &text,int &begin, int &portion){
 
     while(!isspace(text[begin+portion])){
         portion++;
-    }
-    
+    } 
 }
 
 int main(int argc, char** argv)
@@ -107,7 +106,5 @@ int main(int argc, char** argv)
     }
 
     print();
-
-    
     return 0;
 }
